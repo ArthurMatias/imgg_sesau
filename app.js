@@ -9,16 +9,15 @@ import { getFirestore, doc, setDoc, getDoc, getDocs, collection, serverTimestamp
 
 // ═══════════════════════════════════════════════════════════════
 //  🔥 CONFIGURAÇÃO FIREBASE
-//     Substitua pelos dados do seu projeto no Firebase Console
-//     https://console.firebase.google.com → Configurações → Seus apps → Web
 // ═══════════════════════════════════════════════════════════════
 const firebaseConfig = {
-  apiKey:            "SUA_API_KEY",
-  authDomain:        "SEU_PROJETO.firebaseapp.com",
-  projectId:         "SEU_PROJETO_ID",
-  storageBucket:     "SEU_PROJETO.appspot.com",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId:             "SEU_APP_ID"
+  apiKey:            "AIzaSyD3PY7HHBf5dg4x4zjisdPGYxkEHjrWo5Y",
+  authDomain:        "imgg-sesau-al.firebaseapp.com",
+  projectId:         "imgg-sesau-al",
+  storageBucket:     "imgg-sesau-al.firebasestorage.app",
+  messagingSenderId: "81348552662",
+  appId:             "1:81348552662:web:d9489832435c39bb12e677",
+  measurementId:     "G-53NXG9J5CN"
 };
 
 const app  = initializeApp(firebaseConfig);
@@ -31,16 +30,17 @@ const db   = getFirestore(app);
 //  admin@sesau.al.gov.br tem acesso total ao painel ADM
 // ═══════════════════════════════════════════════════════════════
 const SETORES = [
-  { id:"gab",  nome:"Gabinete",                     sigla:"GAB",  email:"gab@sesau.al.gov.br"  },
-  { id:"daf",  nome:"Diretoria Adm. e Financeira",  sigla:"DAF",  email:"daf@sesau.al.gov.br"  },
-  { id:"dge",  nome:"Gestão Estratégica",            sigla:"DGE",  email:"dge@sesau.al.gov.br"  },
-  { id:"das",  nome:"Atenção à Saúde",               sigla:"DAS",  email:"das@sesau.al.gov.br"  },
-  { id:"dvs",  nome:"Vigilância em Saúde",           sigla:"DVS",  email:"dvs@sesau.al.gov.br"  },
+  { id:"asset",  nome:"Transparência", sigla:"ASSET",  email:"assessoriatransparenciasesau@gmail.com"  },
+  { id:"gab",  nome:"Gabinete", sigla:"GAB",  email:"gab@sesau.al.gov.br"  },
+  { id:"daf",  nome:"Diretoria Adm. e Financeira", sigla:"DAF",  email:"daf@sesau.al.gov.br"  },
+  { id:"dge",  nome:"Gestão Estratégica", sigla:"DGE",  email:"dge@sesau.al.gov.br"  },
+  { id:"das",  nome:"Atenção à Saúde", sigla:"DAS",  email:"das@sesau.al.gov.br"  },
+  { id:"dvs",  nome:"Vigilância em Saúde", sigla:"DVS",  email:"dvs@sesau.al.gov.br"  },
   { id:"dths", nome:"Gestão do Trabalho e Educação", sigla:"DTHS", email:"dths@sesau.al.gov.br" },
-  { id:"dgti", nome:"Tecnologia da Informação",      sigla:"DGTI", email:"dgti@sesau.al.gov.br" },
-  { id:"cge",  nome:"Controle e Gestão Estadual",    sigla:"CGE",  email:"cge@sesau.al.gov.br"  },
-  { id:"pge",  nome:"Planejamento e Gestão",         sigla:"PGE",  email:"pge@sesau.al.gov.br"  },
-  { id:"jur",  nome:"Assessoria Jurídica",           sigla:"JUR",  email:"jur@sesau.al.gov.br"  },
+  { id:"dgti", nome:"Tecnologia da Informação", sigla:"DGTI", email:"dgti@sesau.al.gov.br" },
+  { id:"cge",  nome:"Controle e Gestão Estadual", sigla:"CGE",  email:"cge@sesau.al.gov.br"  },
+  { id:"pge",  nome:"Planejamento e Gestão", sigla:"PGE",  email:"pge@sesau.al.gov.br"  },
+  { id:"jur",  nome:"Assessoria Jurídica", sigla:"JUR",  email:"jur@sesau.al.gov.br"  },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -748,12 +748,10 @@ function buildSetoresData(all) {
 //  EXPORT EXCEL (CSV com BOM UTF-8)
 // ═══════════════════════════════════════════════════════════════
 function exportXLS(data) {
-  // Cabeçalho
   let csv = "Setor;Sigla;Status;IMO (%)";
   DIMENSOES.forEach(dim => dim.alineas.forEach(al => { csv += `;${al.id}`; }));
   csv += "\n";
 
-  // Linhas
   data.forEach(s => {
     csv += `"${s.nome}";${s.sigla};"${stLbl(s.status)}";${s.imo}`;
     DIMENSOES.forEach(dim => dim.alineas.forEach(al => {
