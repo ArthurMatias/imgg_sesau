@@ -1,15 +1,12 @@
 // ═══════════════════════════════════════════════════════════════
 //  IMGG · SESAU Alagoas — JavaScript Principal
-//  v4.0 — obs sempre visível + ícones corrigidos
+//  v4.1 — legenda responsiva com esc-legend-inner
 // ═══════════════════════════════════════════════════════════════
 
 import { initializeApp }                                         from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// ═══════════════════════════════════════════════════════════════
-//  🔥 FIREBASE
-// ═══════════════════════════════════════════════════════════════
 const firebaseConfig = {
   apiKey:            "AIzaSyD3PY7HHBf5dg4x4zjisdPGYxkEHjrWo5Y",
   authDomain:        "imgg-sesau-al.firebaseapp.com",
@@ -23,9 +20,6 @@ const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
-// ═══════════════════════════════════════════════════════════════
-//  CONSTANTES
-// ═══════════════════════════════════════════════════════════════
 const ADMIN_EMAIL    = "assessoriatransparenciasesau@gmail.com";
 const ADMIN_SETOR_ID = "asset";
 
@@ -51,7 +45,6 @@ const ESCALA = [
   { valor:5, label:"Otimizado",          descricao:"Excelência e melhoria contínua comprovada",  cor:"#06b6d4" },
 ];
 
-// ─── Ícones ajustados ao título de cada dimensão ───────────────
 const DIMENSOES_PADRAO = [
   { id:"D1", titulo:"Governança", icone:"🏛️", alineas:[
     { id:"D1a", texto:"1. Promover a avaliação das prioridades considerando as competências regimentais ou a missão da instituição." },
@@ -111,13 +104,9 @@ const DIMENSOES_PADRAO = [
   ]},
 ];
 
-// ═══════════════════════════════════════════════════════════════
-//  ESTADO GLOBAL
-// ═══════════════════════════════════════════════════════════════
 let DIMENSOES     = JSON.parse(JSON.stringify(DIMENSOES_PADRAO));
 let TOTAL_ALINEAS = DIMENSOES.reduce((s,d)=>s+d.alineas.length,0);
 let setorConfig   = {};
-
 let currentUser    = null;
 let currentSetorId = null;
 let isAdmin        = false;
@@ -126,9 +115,6 @@ let respostasSetor = {};
 let chartInstances = {};
 let adminTab       = "dashboard";
 
-// ═══════════════════════════════════════════════════════════════
-//  HELPERS DE ALÍNEAS POR SETOR
-// ═══════════════════════════════════════════════════════════════
 function getDimensoesParaSetor(setorId) {
   const cfg = setorConfig[setorId];
   if (!cfg || !cfg.alineasAtivas || cfg.alineasAtivas.length === 0) return DIMENSOES;
@@ -142,18 +128,6 @@ function getTotalAlineasParaSetor(setorId) {
   return getDimensoesParaSetor(setorId).reduce((s,d)=>s+d.alineas.length,0);
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  FIREBASE — CONFIG
-//  IMPORTANTE: nas Security Rules do Firestore use:
-//    rules_version = '2';
-//    service cloud.firestore {
-//      match /databases/{database}/documents {
-//        match /{document=**} {
-//          allow read, write: if request.auth != null;
-//        }
-//      }
-//    }
-// ═══════════════════════════════════════════════════════════════
 async function loadDimensoesConfig() {
   try {
     const snap = await getDoc(doc(db,"config","dimensoes"));
@@ -181,9 +155,6 @@ async function saveSetorConfig() {
   await setDoc(doc(db,"config","setorAlineas"),{setores:setorConfig,updatedAt:serverTimestamp()});
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  FIREBASE — RESPOSTAS
-// ═══════════════════════════════════════════════════════════════
 async function loadRespostas(id) {
   try {
     const snap = await getDoc(doc(db,"respostas",id));
@@ -235,9 +206,6 @@ async function loadAll() {
   return result;
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  AUTH
-// ═══════════════════════════════════════════════════════════════
 onAuthStateChanged(auth, async (user) => {
   await loadDimensoesConfig();
   await loadSetorConfig();
@@ -261,9 +229,6 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════════
-//  LOGIN
-// ═══════════════════════════════════════════════════════════════
 function renderLogin() {
   document.getElementById("app").innerHTML = `
     <div class="login-bg">
@@ -300,9 +265,6 @@ async function doLogin() {
   catch(e) { err.textContent="E-mail ou senha inválidos."; btn.textContent="Acessar Sistema"; btn.disabled=false; }
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  SETOR — SHELL
-// ═══════════════════════════════════════════════════════════════
 function renderSetorShell(setor, isAdminToggled=false) {
   document.getElementById("app").innerHTML = `
     <div class="shell">
@@ -332,14 +294,12 @@ function renderSetorShell(setor, isAdminToggled=false) {
 
 // ═══════════════════════════════════════════════════════════════
 //  SETOR — FORMULÁRIO
-//  FIX: campo de observação sempre visível desde o início
+//  AJUSTE: esc-legend-inner envolve os itens para grid responsivo
 // ═══════════════════════════════════════════════════════════════
 function renderForm() {
   const setorId    = currentSetorId;
   const dimsSetor  = getDimensoesParaSetor(setorId);
   const totalSetor = dimsSetor.reduce((s,d)=>s+d.alineas.length,0);
-
-  // Conta apenas alíneas que têm nota selecionada
   const respondidas = Object.values(respostasSetor).filter(r => r.valor !== null && r.valor !== undefined).length;
   const pct = totalSetor>0 ? Math.round((respondidas/totalSetor)*100) : 0;
 
@@ -354,9 +314,13 @@ function renderForm() {
       <h1 class="fh-title">Avaliação IMGG 2025</h1>
       <p class="fh-desc">Avalie cada alínea na escala de <strong>1 a 5</strong> e descreva a evidência ou justificativa no campo de texto. As respostas são salvas automaticamente.</p>
       <div class="esc-legend">
-        ${ESCALA.map(e=>`
-          <div class="eld"><span class="eld-dot" style="background:${e.cor}">${e.valor}</span>
-          <div><span class="eld-lbl">${e.label}</span><span class="eld-desc">${e.descricao}</span></div></div>`).join("")}
+        <div class="esc-legend-inner">
+          ${ESCALA.map(e=>`
+            <div class="eld">
+              <span class="eld-dot" style="background:${e.cor}">${e.valor}</span>
+              <div><span class="eld-lbl">${e.label}</span><span class="eld-desc">${e.descricao}</span></div>
+            </div>`).join("")}
+        </div>
       </div>
     </div>`;
 
@@ -420,7 +384,6 @@ function renderForm() {
 
   document.getElementById("sMain").innerHTML = html;
 
-  // Salva nota ao clicar
   document.querySelectorAll(".eb").forEach(btn => {
     btn.addEventListener("click", async () => {
       const alId  = btn.dataset.alinea;
@@ -433,7 +396,6 @@ function renderForm() {
     });
   });
 
-  // Salva obs ao sair do campo (blur)
   document.querySelectorAll(".al-obs").forEach(input => {
     input.addEventListener("blur", async () => {
       const alId = input.dataset.alinea;
@@ -441,7 +403,6 @@ function renderForm() {
       if (r && r.valor !== null && r.valor !== undefined) {
         await saveResposta(currentSetorId, alId, r.valor, input.value);
       } else if (input.value.trim()) {
-        // Tem texto mas sem nota ainda — salva o texto temporariamente sem nota
         respostasSetor[alId] = { valor: null, obs: input.value, ts: new Date().toISOString() };
       }
     });
@@ -450,9 +411,6 @@ function renderForm() {
   document.getElementById("btnSubmit")?.addEventListener("click",()=>submitForm(currentSetorId));
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  ADMIN — SHELL
-// ═══════════════════════════════════════════════════════════════
 function renderAdminShell() {
   const setorAsset = SETORES.find(s=>s.id===ADMIN_SETOR_ID);
   document.getElementById("app").innerHTML = `
@@ -517,9 +475,6 @@ async function renderAdminContent() {
   document.getElementById("btnPdf").addEventListener("click",()=>exportPDF(window._adminData||data));
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  ABA: DASHBOARD
-// ═══════════════════════════════════════════════════════════════
 function renderDashboardTab(data) {
   const enviados=data.filter(s=>s.status==="enviado").length;
   const emAnd=data.filter(s=>["em_andamento","concluido"].includes(s.status)).length;
@@ -556,9 +511,6 @@ function renderDashboardTab(data) {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  ABA: MÉTRICAS
-// ═══════════════════════════════════════════════════════════════
 function renderMetricasTab(data) {
   const total=data.length;
   const mediaIMO=parseFloat((data.reduce((a,s)=>a+s.imo,0)/total).toFixed(1));
@@ -685,9 +637,6 @@ function renderMetricasTab(data) {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  ABA: RESPOSTAS
-// ═══════════════════════════════════════════════════════════════
 function renderRespostasTab(data) {
   document.getElementById("aMain").innerHTML=`<div class="adm-wrap">
     <div class="sec-hdr">
@@ -721,9 +670,6 @@ function renderRespostasTab(data) {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  ABA: EDITOR GLOBAL DE ALÍNEAS
-// ═══════════════════════════════════════════════════════════════
 function renderEditorAlineas() {
   let editDims=JSON.parse(JSON.stringify(DIMENSOES));
 
@@ -850,9 +796,6 @@ function renderEditorAlineas() {
   rebind();
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  ABA: ALÍNEAS POR SETOR
-// ═══════════════════════════════════════════════════════════════
 function renderEditorSetores() {
   let setorSel = SETORES[0].id;
 
@@ -1010,9 +953,6 @@ function renderEditorSetores() {
   bindSetorBtns();
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  DETALHE SETOR
-// ═══════════════════════════════════════════════════════════════
 function renderDetalheSetor(s) {
   document.getElementById("aMain").innerHTML=`<div class="adm-wrap">
     <button class="btn-back" id="btnBack">← Voltar ao Painel</button>
@@ -1070,9 +1010,6 @@ function renderDetalheSetor(s) {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  GRÁFICOS
-// ═══════════════════════════════════════════════════════════════
 function renderChartBar(data) {
   chartInstances.bar=new Chart(document.getElementById("cBar"),{
     type:"bar",data:{labels:data.map(s=>s.sigla),datasets:[{label:"IMO (%)",data:data.map(s=>s.imo),backgroundColor:data.map(s=>imoColorA(s.imo,.75)),borderColor:data.map(s=>imoColor(s.imo)),borderWidth:2,borderRadius:8}]},
@@ -1097,9 +1034,6 @@ function destroyCharts() {
   chartInstances={};
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  HTML HELPERS
-// ═══════════════════════════════════════════════════════════════
 function setorCardHtml(s) {
   const total=getTotalAlineasParaSetor(s.id);
   const pct=total>0?Math.round((s.respondidas/total)*100):0;
@@ -1147,13 +1081,9 @@ function listItemHtml(s) {
   </details>`;
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  DADOS
-// ═══════════════════════════════════════════════════════════════
 function buildSetoresData(all) {
   return SETORES.map(s=>{
     const d=all[s.id]||{}, resp=d.respostas||{};
-    // Conta apenas respostas com nota válida
     const respondidas=Object.values(resp).filter(r=>r.valor!==null&&r.valor!==undefined).length;
     const pts=Object.values(resp).reduce((a,r)=>a+(r.valor||0),0);
     const imo=respondidas>0?parseFloat(((pts/(respondidas*5))*100).toFixed(1)):0;
@@ -1166,9 +1096,6 @@ function buildSetoresData(all) {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  EXPORT
-// ═══════════════════════════════════════════════════════════════
 function exportXLS(data) {
   let csv="Setor;Sigla;Status;IMO (%)";
   DIMENSOES.forEach(dim=>dim.alineas.forEach(al=>{ csv+=`;${al.id};${al.id}_obs`; }));
@@ -1196,9 +1123,6 @@ function exportPDF(data) {
   toast("Janela de impressão/PDF aberta! 🖨","success");
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  HELPERS
-// ═══════════════════════════════════════════════════════════════
 function imoColor(p){ if(p>=80)return"#06b6d4";if(p>=60)return"#22c55e";if(p>=40)return"#eab308";if(p>=20)return"#f97316";return"#ef4444"; }
 function imoColorA(p,a){ const c=imoColor(p),r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16);return`rgba(${r},${g},${b},${a})`; }
 function imoNivel(p){ if(p>=80)return"Nível Otimizado — Excelência comprovada";if(p>=60)return"Nível Gerenciado — Bem implementado";if(p>=40)return"Nível em Desenvolvimento — Em estruturação";if(p>=20)return"Nível Inicial — Esforços pontuais";return"Nível Inexistente — Sem implementação"; }
