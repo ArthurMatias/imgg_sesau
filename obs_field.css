@@ -1,0 +1,83 @@
+/* ═══════════════════════════════════════════════════════════════
+   IMGG — CSS ADICIONAL v4
+   Cole no final do seu style.css
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── CAMPO DE OBSERVAÇÃO / EVIDÊNCIA — sempre visível ────────── */
+.al-obs-wrap {
+  margin-top: 12px;
+}
+
+.al-obs-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 6px;
+}
+
+.al-obs-hint {
+  font-size: 10px;
+  font-weight: 400;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* Sobrescreve o input anterior — agora é textarea */
+.al-obs {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-family: 'Sora', sans-serif;
+  font-size: 13px;
+  color: #374151;
+  background: #f8fafc;
+  resize: vertical;
+  min-height: 72px;
+  transition: border-color .2s, background .2s;
+  box-sizing: border-box;
+  line-height: 1.5;
+}
+
+.al-obs:focus {
+  outline: none;
+  border-color: #003d7a;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(0,61,122,.08);
+}
+
+.al-obs::placeholder {
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+/* Quando a alínea está respondida, destaca o campo */
+.al-ok .al-obs {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.al-ok .al-obs:focus {
+  border-color: #22c55e;
+  background: #fff;
+}
+
+.al-ok .al-obs-label {
+  color: #166534;
+}
+
+/* Texto de observação nas tabelas admin */
+.obs-text {
+  display: block;
+  font-size: 11px;
+  color: #374151;
+  line-height: 1.4;
+  font-style: italic;
+  background: #f8fafc;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border-left: 3px solid #94a3b8;
+}
