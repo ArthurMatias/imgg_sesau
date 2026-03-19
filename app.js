@@ -24,17 +24,21 @@ const ADMIN_EMAIL    = "assessoriatransparenciasesau@gmail.com";
 const ADMIN_SETOR_ID = "asset";
 
 const SETORES = [
-  { id:"asset", nome:"Transparência",                 sigla:"ASSET", email:"assessoriatransparenciasesau@gmail.com" },
-  { id:"gab",   nome:"Gabinete",                      sigla:"GAB",   email:"gab@sesau.al.gov.br"   },
-  { id:"daf",   nome:"Diretoria Adm. e Financeira",   sigla:"DAF",   email:"daf@sesau.al.gov.br"   },
-  { id:"dge",   nome:"Gestão Estratégica",            sigla:"DGE",   email:"dge@sesau.al.gov.br"   },
-  { id:"das",   nome:"Atenção à Saúde",               sigla:"DAS",   email:"das@sesau.al.gov.br"   },
-  { id:"dvs",   nome:"Vigilância em Saúde",           sigla:"DVS",   email:"dvs@sesau.al.gov.br"   },
-  { id:"dths",  nome:"Gestão do Trabalho e Educação", sigla:"DTHS",  email:"dths@sesau.al.gov.br"  },
-  { id:"dgti",  nome:"Tecnologia da Informação",      sigla:"DGTI",  email:"dgti@sesau.al.gov.br"  },
-  { id:"cge",   nome:"Controle e Gestão Estadual",    sigla:"CGE",   email:"cge@sesau.al.gov.br"   },
-  { id:"pge",   nome:"Planejamento e Gestão",         sigla:"PGE",   email:"pge@sesau.al.gov.br"   },
-  { id:"jur",   nome:"Assessoria Jurídica",           sigla:"JUR",   email:"jur@sesau.al.gov.br"   },
+  { id:"asset",   nome:"Assessoria Executiva da Transparência",                  sigla:"ASSET",   email:"assessoriatransparenciasesau@gmail.com" },
+  { id:"ascom",   nome:"Assessoria de Comunicação",                              sigla:"ASCOM",   email:"ascom@sesau.al.gov.br"    },
+  { id:"getin",   nome:"Gerência Executiva de Tecnologia da Informação",         sigla:"GETIN",   email:"getin@sesau.al.gov.br"    },
+  { id:"suaf",    nome:"Superintendência de Assistência Farmacêutica",           sigla:"SUAF",    email:"suaf@sesau.al.gov.br"     },
+  { id:"ces",     nome:"Conselho Estadual de Saúde",                             sigla:"CES",     email:"ces@sesau.al.gov.br"      },
+  { id:"suapae",  nome:"Secretaria Executiva de Ações Estratégicas",             sigla:"SUAPAE",  email:"suapae@sesau.al.gov.br"   },
+  { id:"suplag",  nome:"SUPLAG",                                                 sigla:"SUPLAG",  email:"suplag@sesau.al.gov.br"   },
+  { id:"suah",    nome:"Atenção Especializada Ambulatorial e Hospitalar",        sigla:"SUAH",    email:"suah@sesau.al.gov.br"     },
+  { id:"supad",   nome:"Superintendência Administrativa",                        sigla:"SUPAD",   email:"supad@sesau.al.gov.br"    },
+  { id:"gov",     nome:"Governança",                                             sigla:"GOV",     email:"gov@sesau.al.gov.br"      },
+  { id:"sevisa",  nome:"Secretaria Executiva de Vigilância em Saúde",            sigla:"SEVISA",  email:"sevisa@sesau.al.gov.br"   },
+  { id:"gaest",   nome:"Gerência de Ações Estratégicas",                         sigla:"GAEST",   email:"gaest@sesau.al.gov.br"    },
+  { id:"supofc",  nome:"Superintendência de Planejamento, Orçamento, Finanças e Contabilidade", sigla:"SUPOFC", email:"supofc@sesau.al.gov.br" },
+  { id:"supvp",   nome:"Superintendência de Valorização de Pessoas",             sigla:"SUPVP",   email:"supvp@sesau.al.gov.br"    },
+  { id:"tft",     nome:"Tratamento Fora de Domicílio",                           sigla:"TFT",     email:"tft@sesau.al.gov.br"      },
 ];
 
 // ─── Chave Firestore: respostas são isoladas por ano
