@@ -1,9 +1,9 @@
 // ═══════════════════════════════════════════════════════════════
 //  IMGG · SESAU Alagoas — JavaScript Principal
-//  v4.1 — legenda responsiva com esc-legend-inner
+//  v6.0 — Avaliação por Ano · Sim/Não · Anexo Base64
 // ═══════════════════════════════════════════════════════════════
 
-import { initializeApp }                                         from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { initializeApp }                                          from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -37,13 +37,9 @@ const SETORES = [
   { id:"jur",   nome:"Assessoria Jurídica",           sigla:"JUR",   email:"jur@sesau.al.gov.br"   },
 ];
 
-const ESCALA = [
-  { valor:1, label:"Inexistente",        descricao:"Não há evidência de implementação",          cor:"#ef4444" },
-  { valor:2, label:"Inicial",            descricao:"Esforços pontuais, sem sistematização",      cor:"#f97316" },
-  { valor:3, label:"Em Desenvolvimento", descricao:"Parcialmente implementado, em estruturação", cor:"#eab308" },
-  { valor:4, label:"Gerenciado",         descricao:"Implementado e monitorado regularmente",     cor:"#22c55e" },
-  { valor:5, label:"Otimizado",          descricao:"Excelência e melhoria contínua comprovada",  cor:"#06b6d4" },
-];
+// ─── Chave Firestore: respostas são isoladas por ano
+//     Coleção: "respostas_YYYY" → documento: setorId
+//     Config de anos: doc(db, "config", "anos") → { anos: [{ano, ativo, label}] }
 
 const DIMENSOES_PADRAO = [
   { id:"D1", titulo:"Governança", icone:"🏛️", alineas:[
@@ -104,9 +100,10 @@ const DIMENSOES_PADRAO = [
   ]},
 ];
 
-let DIMENSOES     = JSON.parse(JSON.stringify(DIMENSOES_PADRAO));
-let TOTAL_ALINEAS = DIMENSOES.reduce((s,d)=>s+d.alineas.length,0);
-let setorConfig   = {};
+// ─── Estado global ──────────────────────────────────────────────
+let DIMENSOES      = JSON.parse(JSON.stringify(DIMENSOES_PADRAO));
+let TOTAL_ALINEAS  = DIMENSOES.reduce((s,d)=>s+d.alineas.length,0);
+let setorConfig    = {};
 let currentUser    = null;
 let currentSetorId = null;
 let isAdmin        = false;
@@ -115,6 +112,59 @@ let respostasSetor = {};
 let chartInstances = {};
 let adminTab       = "dashboard";
 
+// ─── ANOS ───────────────────────────────────────────────────────
+let anosDisponiveis = [];   // [{ ano: "2025", ativo: true }, ...]
+let anoSelecionado  = "";   // ano em uso no momento (setor e admin)
+
+// Coleção Firestore por ano: "respostas_2025", "respostas_2026", etc.
+function colRespostas(ano) { return `respostas_${ano}`; }
+
+// ─── Helpers ────────────────────────────────────────────────────
+function isRespondida(r) {
+  return r && r.continuidade !== null && r.continuidade !== undefined
+           && r.adequacao    !== null && r.adequacao    !== undefined;
+}
+
+function calcIMO(respostas, total) {
+  const maxPts = total * 2;
+  if (maxPts === 0) return 0;
+  let pts = 0;
+  Object.values(respostas).forEach(r => {
+    if (r.continuidade === "sim") pts++;
+    if (r.adequacao    === "sim") pts++;
+  });
+  return parseFloat(((pts / maxPts) * 100).toFixed(1));
+}
+
+// ─── Anos — Firebase ────────────────────────────────────────────
+async function loadAnos() {
+  try {
+    const snap = await getDoc(doc(db, "config", "anos"));
+    if (snap.exists() && snap.data().anos?.length) {
+      anosDisponiveis = snap.data().anos;
+    } else {
+      // Primeira vez: cria o ano corrente como padrão
+      const anoAtual = String(new Date().getFullYear());
+      anosDisponiveis = [{ ano: anoAtual, ativo: true }];
+      await saveAnos();
+    }
+  } catch(e) {
+    const anoAtual = String(new Date().getFullYear());
+    anosDisponiveis = [{ ano: anoAtual, ativo: true }];
+    console.warn("loadAnos:", e.message);
+  }
+  // Define o ano selecionado: último ano ativo, ou o mais recente
+  const ativos = anosDisponiveis.filter(a => a.ativo);
+  anoSelecionado = ativos.length
+    ? ativos[ativos.length - 1].ano
+    : anosDisponiveis[anosDisponiveis.length - 1].ano;
+}
+
+async function saveAnos() {
+  await setDoc(doc(db, "config", "anos"), { anos: anosDisponiveis, updatedAt: serverTimestamp() });
+}
+
+// ─── Dimensões / Config ─────────────────────────────────────────
 function getDimensoesParaSetor(setorId) {
   const cfg = setorConfig[setorId];
   if (!cfg || !cfg.alineasAtivas || cfg.alineasAtivas.length === 0) return DIMENSOES;
@@ -155,25 +205,29 @@ async function saveSetorConfig() {
   await setDoc(doc(db,"config","setorAlineas"),{setores:setorConfig,updatedAt:serverTimestamp()});
 }
 
-async function loadRespostas(id) {
+// ─── Respostas (por ano) ─────────────────────────────────────────
+async function loadRespostas(setorId) {
   try {
-    const snap = await getDoc(doc(db,"respostas",id));
-    respostasSetor = snap.exists() ? (snap.data().respostas||{}) : {};
+    const snap = await getDoc(doc(db, colRespostas(anoSelecionado), setorId));
+    respostasSetor = snap.exists() ? (snap.data().respostas || {}) : {};
   } catch(e) { respostasSetor = {}; }
 }
 
-async function saveResposta(setorId, alId, valor, obs) {
-  respostasSetor[alId] = { valor, obs, ts: new Date().toISOString() };
+async function saveResposta(setorId, alId, campo, valor) {
+  if (!respostasSetor[alId]) respostasSetor[alId] = { continuidade:null, adequacao:null, obs:"", anexos:[], ts: new Date().toISOString() };
+  respostasSetor[alId][campo] = valor;
+  respostasSetor[alId].ts = new Date().toISOString();
+
   const total      = getTotalAlineasParaSetor(setorId);
-  const respondidas = Object.keys(respostasSetor).filter(k => respostasSetor[k].valor !== null && respostasSetor[k].valor !== undefined).length;
-  const pts        = Object.values(respostasSetor).reduce((a,r)=>a+(r.valor||0),0);
-  const imo        = respondidas > 0 ? parseFloat(((pts/(respondidas*5))*100).toFixed(1)) : 0;
+  const respondidas = Object.values(respostasSetor).filter(r => isRespondida(r)).length;
+  const imo        = calcIMO(respostasSetor, total);
+
   try {
-    await setDoc(doc(db,"respostas",setorId), {
-      setorId, respostas:respostasSetor, respondidas, imo,
-      status: respondidas===0?"nao_iniciado":respondidas<total?"em_andamento":"concluido",
+    await setDoc(doc(db, colRespostas(anoSelecionado), setorId), {
+      setorId, ano: anoSelecionado, respostas: respostasSetor, respondidas, imo,
+      status: respondidas===0 ? "nao_iniciado" : respondidas < total ? "em_andamento" : "concluido",
       updatedAt: serverTimestamp(),
-    },{merge:true});
+    }, { merge: true });
   } catch(e) {
     toast("Erro ao salvar: " + e.message + " — Verifique as regras do Firestore.", "warn");
     console.error("saveResposta:", e);
@@ -182,15 +236,17 @@ async function saveResposta(setorId, alId, valor, obs) {
 
 async function submitForm(setorId) {
   const total      = getTotalAlineasParaSetor(setorId);
-  const respondidas = Object.keys(respostasSetor).filter(k => respostasSetor[k].valor !== null && respostasSetor[k].valor !== undefined).length;
+  const respondidas = Object.values(respostasSetor).filter(r => isRespondida(r)).length;
   if (respondidas < total) { toast(`Responda todas as ${total} alíneas. (${respondidas}/${total})`,"warn"); return; }
-  const pts = Object.values(respostasSetor).reduce((a,r)=>a+(r.valor||0),0);
-  const imo = parseFloat(((pts/(total*5))*100).toFixed(1));
+  const imo = calcIMO(respostasSetor, total);
+  // Verifica se o ano está ativo
+  const anoObj = anosDisponiveis.find(a => a.ano === anoSelecionado);
+  if (!anoObj?.ativo) { toast("Este ano está encerrado e não aceita mais respostas.","warn"); return; }
   try {
-    await setDoc(doc(db,"respostas",setorId),{
-      setorId, respostas:respostasSetor, respondidas:total, imo,
-      status:"enviado", enviadoEm:serverTimestamp(), updatedAt:serverTimestamp(),
-    },{merge:true});
+    await setDoc(doc(db, colRespostas(anoSelecionado), setorId), {
+      setorId, ano: anoSelecionado, respostas: respostasSetor, respondidas: total, imo,
+      status: "enviado", enviadoEm: serverTimestamp(), updatedAt: serverTimestamp(),
+    }, { merge: true });
     toast("Avaliação enviada com sucesso! ✅","success");
     renderForm();
   } catch(e) {
@@ -200,15 +256,17 @@ async function submitForm(setorId) {
 }
 
 async function loadAll() {
-  const snap = await getDocs(collection(db,"respostas"));
+  const snap = await getDocs(collection(db, colRespostas(anoSelecionado)));
   const result = {};
   snap.forEach(d => result[d.id] = d.data());
   return result;
 }
 
+// ─── Auth ───────────────────────────────────────────────────────
 onAuthStateChanged(auth, async (user) => {
   await loadDimensoesConfig();
   await loadSetorConfig();
+  await loadAnos();
   if (user) {
     currentUser = user;
     if (user.email === ADMIN_EMAIL) {
@@ -216,11 +274,12 @@ onAuthStateChanged(auth, async (user) => {
       renderAdminShell();
       await renderAdminContent();
     } else {
-      const setor = SETORES.find(s=>s.email===user.email);
+      const setor = SETORES.find(s => s.email === user.email);
       if (setor) {
         isAdmin = false; currentSetorId = setor.id;
         await loadRespostas(setor.id);
-        renderSetorShell(setor); renderForm();
+        renderSetorShell(setor);
+        renderForm();
       } else { await signOut(auth); }
     }
   } else {
@@ -229,6 +288,7 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
+// ─── Login ──────────────────────────────────────────────────────
 function renderLogin() {
   document.getElementById("app").innerHTML = `
     <div class="login-bg">
@@ -257,15 +317,53 @@ function renderLogin() {
 }
 
 async function doLogin() {
-  const email=document.getElementById("lEmail").value.trim();
-  const senha=document.getElementById("lSenha").value;
-  const btn=document.getElementById("lBtn"), err=document.getElementById("lErr");
+  const email = document.getElementById("lEmail").value.trim();
+  const senha = document.getElementById("lSenha").value;
+  const btn   = document.getElementById("lBtn"), err = document.getElementById("lErr");
   btn.textContent="Entrando..."; btn.disabled=true; err.textContent="";
-  try { await signInWithEmailAndPassword(auth,email,senha); }
+  try { await signInWithEmailAndPassword(auth, email, senha); }
   catch(e) { err.textContent="E-mail ou senha inválidos."; btn.textContent="Acessar Sistema"; btn.disabled=false; }
 }
 
-function renderSetorShell(setor, isAdminToggled=false) {
+// ─── Seletor de ano (HTML reutilizável) ─────────────────────────
+function anoSeletorHtml(somenteLeitura = false) {
+  const ativos = anosDisponiveis.filter(a => a.ativo);
+  const lista  = somenteLeitura ? anosDisponiveis : ativos;
+  if (lista.length <= 1 && somenteLeitura) {
+    // admin com 1 ano: mostra mesmo assim para poder gerenciar
+  }
+  return `<div class="ano-selector">
+    <span class="ano-label">📅 Ano</span>
+    <div class="ano-btns" id="anoBtns">
+      ${lista.map(a => `
+        <button class="ano-btn${a.ano === anoSelecionado ? " ano-ativo" : ""}${!a.ativo ? " ano-encerrado" : ""}"
+          data-ano="${a.ano}">
+          ${a.ano}${!a.ativo ? " 🔒" : ""}
+        </button>`).join("")}
+    </div>
+  </div>`;
+}
+
+function bindAnoSeletor(onMudanca) {
+  document.querySelectorAll(".ano-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (btn.dataset.ano === anoSelecionado) return;
+      anoSelecionado = btn.dataset.ano;
+      document.querySelectorAll(".ano-btn").forEach(b => {
+        b.classList.toggle("ano-ativo", b.dataset.ano === anoSelecionado);
+      });
+      await onMudanca();
+    });
+  });
+}
+
+// ─── Shell Setor ─────────────────────────────────────────────────
+function renderSetorShell(setor, isAdminToggled = false) {
+  const anoAtual = anosDisponiveis.find(a => a.ano === anoSelecionado);
+  const soLeitura = anoAtual && !anoAtual.ativo;
+  // Setor só vê anos ativos
+  const anosVisiveis = anosDisponiveis.filter(a => a.ativo);
+
   document.getElementById("app").innerHTML = `
     <div class="shell">
       <header class="topbar">
@@ -275,100 +373,132 @@ function renderSetorShell(setor, isAdminToggled=false) {
           <span class="tb-sub">Instrumento de Maturidade, Governança e Gestão</span></div>
         </div>
         <div class="topbar-r">
+          ${anosVisiveis.length > 1 ? `
+          <div class="ano-selector-topbar">
+            <span class="ano-label">📅</span>
+            <div class="ano-btns" id="anoBtns">
+              ${anosVisiveis.map(a=>`
+                <button class="ano-btn${a.ano===anoSelecionado?" ano-ativo":""}" data-ano="${a.ano}">${a.ano}</button>
+              `).join("")}
+            </div>
+          </div>` : `<span class="tb-ano-chip">📅 ${anoSelecionado}</span>`}
           <div class="tb-chip">${setor.sigla} — ${setor.nome}</div>
-          ${isAdminToggled ? `<button class="btn-toggle-admin" id="btnVoltarAdmin">🔐 Voltar ao Painel Admin</button>` : ""}
+          ${isAdminToggled ? `<button class="btn-toggle-admin" id="btnVoltarAdmin">🔐 Voltar ao Admin</button>` : ""}
           <button class="btn-sair" id="btnSair">Sair</button>
         </div>
       </header>
+      ${soLeitura ? `<div class="ano-readonly-banner">🔒 A avaliação de <strong>${anoSelecionado}</strong> está encerrada. Visualização somente leitura.</div>` : ""}
       <div class="prog-strip"><div class="prog-fill" id="progFill"></div></div>
       <div class="prog-info" id="progInfo"></div>
       <main class="setor-main" id="sMain"></main>
     </div>`;
-  document.getElementById("btnSair").addEventListener("click",()=>signOut(auth));
+
+  document.getElementById("btnSair").addEventListener("click", () => signOut(auth));
   if (isAdminToggled) {
-    document.getElementById("btnVoltarAdmin").addEventListener("click",()=>{
-      adminMode=true; renderAdminShell(); renderAdminContent();
+    document.getElementById("btnVoltarAdmin").addEventListener("click", () => {
+      adminMode = true; renderAdminShell(); renderAdminContent();
+    });
+  }
+  if (anosVisiveis.length > 1) {
+    bindAnoSeletor(async () => {
+      await loadRespostas(setor.id);
+      renderForm();
     });
   }
 }
 
 // ═══════════════════════════════════════════════════════════════
 //  SETOR — FORMULÁRIO
-//  AJUSTE: esc-legend-inner envolve os itens para grid responsivo
 // ═══════════════════════════════════════════════════════════════
 function renderForm() {
-  const setorId    = currentSetorId;
-  const dimsSetor  = getDimensoesParaSetor(setorId);
-  const totalSetor = dimsSetor.reduce((s,d)=>s+d.alineas.length,0);
-  const respondidas = Object.values(respostasSetor).filter(r => r.valor !== null && r.valor !== undefined).length;
-  const pct = totalSetor>0 ? Math.round((respondidas/totalSetor)*100) : 0;
+  const setorId     = currentSetorId;
+  const anoAtual    = anosDisponiveis.find(a => a.ano === anoSelecionado);
+  const soLeitura   = anoAtual && !anoAtual.ativo;
+  const dimsSetor   = getDimensoesParaSetor(setorId);
+  const totalSetor  = dimsSetor.reduce((s,d) => s+d.alineas.length, 0);
+  const respondidas = Object.values(respostasSetor).filter(r => isRespondida(r)).length;
+  const pct = totalSetor > 0 ? Math.round((respondidas / totalSetor) * 100) : 0;
 
-  document.getElementById("progFill").style.width = pct+"%";
+  document.getElementById("progFill").style.width = pct + "%";
   document.getElementById("progInfo").innerHTML = `
     <span class="pi-num">${respondidas}<span class="pi-of">/${totalSetor}</span></span>
-    <span class="pi-lbl">alíneas respondidas</span>
+    <span class="pi-lbl">alíneas respondidas — ${anoSelecionado}</span>
     <span class="pi-pct">${pct}%</span>`;
 
   let html = `<div class="form-wrap">
     <div class="form-head">
-      <h1 class="fh-title">Avaliação IMGG 2025</h1>
-      <p class="fh-desc">Avalie cada alínea na escala de <strong>1 a 5</strong> e descreva a evidência ou justificativa no campo de texto. As respostas são salvas automaticamente.</p>
-      <div class="esc-legend">
-        <div class="esc-legend-inner">
-          ${ESCALA.map(e=>`
-            <div class="eld">
-              <span class="eld-dot" style="background:${e.cor}">${e.valor}</span>
-              <div><span class="eld-lbl">${e.label}</span><span class="eld-desc">${e.descricao}</span></div>
-            </div>`).join("")}
-        </div>
-      </div>
+      <h1 class="fh-title">Avaliação IMGG ${anoSelecionado}</h1>
+      <p class="fh-desc">Para cada alínea, indique se há <strong>Continuidade</strong> e <strong>Adequação</strong> da prática. Você também pode adicionar uma observação e anexar documentos comprobatórios.${soLeitura ? " <strong style='color:#b91c1c'>Avaliação encerrada — somente leitura.</strong>" : " As respostas são salvas automaticamente."}</p>
     </div>`;
 
-  dimsSetor.forEach((dim,di) => {
-    const respDim  = dim.alineas.filter(a => respostasSetor[a.id]?.valor !== undefined && respostasSetor[a.id]?.valor !== null).length;
-    const completa = respDim===dim.alineas.length;
+  dimsSetor.forEach((dim, di) => {
+    const respDim  = dim.alineas.filter(a => isRespondida(respostasSetor[a.id])).length;
+    const completa = respDim === dim.alineas.length;
 
     html += `
-    <div class="dim-bloco${completa?" dim-ok":""}">
+    <div class="dim-bloco${completa ? " dim-ok" : ""}">
       <div class="dim-hdr">
         <span class="dim-ico">${dim.icone}</span>
         <div class="dim-hdr-t">
           <span class="dim-cod">Dimensão ${di+1}</span>
           <span class="dim-nome">${dim.titulo}</span>
         </div>
-        <span class="dim-ct${completa?" dc-ok":""}">${respDim}/${dim.alineas.length}</span>
+        <span class="dim-ct${completa ? " dc-ok" : ""}">${respDim}/${dim.alineas.length}</span>
       </div>
       <div class="alineas">`;
 
-    dim.alineas.forEach((al,ai) => {
-      const r   = respostasSetor[al.id];
-      const val = r?.valor ?? null;
-      const obs = r?.obs ?? "";
+    dim.alineas.forEach((al, ai) => {
+      const r        = respostasSetor[al.id] || {};
+      const cont     = r.continuidade ?? null;
+      const adeq     = r.adequacao    ?? null;
+      const obs      = r.obs          ?? "";
+      const anexos   = r.anexos       || [];
+      const respondida = isRespondida(r);
+      const dis      = soLeitura ? "disabled" : "";
 
       html += `
-        <div class="alinea${val!==null?" al-ok":""}" id="al-${al.id}">
+        <div class="alinea${respondida ? " al-ok" : ""}" id="al-${al.id}">
           <div class="al-idx">${String.fromCharCode(65+ai)}</div>
           <div class="al-body">
             <p class="al-txt">${al.texto}</p>
-            <div class="al-esc">
-              ${ESCALA.map(op=>`
-                <button class="eb${val===op.valor?" eb-sel":""}"
-                  style="${val===op.valor?`background:${op.cor};border-color:${op.cor};color:#fff;`:""}"
-                  title="${op.descricao}" data-alinea="${al.id}" data-valor="${op.valor}">
-                  <span class="eb-n">${op.valor}</span><span class="eb-l">${op.label}</span>
-                </button>`).join("")}
+
+            <div class="al-campo">
+              <span class="al-campo-label">Continuidade</span>
+              <div class="sn-group">
+                <button class="sn-btn${cont==="sim"?" sn-sim":""}" ${dis} data-alinea="${al.id}" data-campo="continuidade" data-valor="sim">✔ Sim</button>
+                <button class="sn-btn${cont==="nao"?" sn-nao":""}" ${dis} data-alinea="${al.id}" data-campo="continuidade" data-valor="nao">✘ Não</button>
+              </div>
             </div>
+
+            <div class="al-campo">
+              <span class="al-campo-label">Adequação</span>
+              <div class="sn-group">
+                <button class="sn-btn${adeq==="sim"?" sn-sim":""}" ${dis} data-alinea="${al.id}" data-campo="adequacao" data-valor="sim">✔ Sim</button>
+                <button class="sn-btn${adeq==="nao"?" sn-nao":""}" ${dis} data-alinea="${al.id}" data-campo="adequacao" data-valor="nao">✘ Não</button>
+              </div>
+            </div>
+
             <div class="al-obs-wrap">
-              <label class="al-obs-label" for="obs-${al.id}">
-                📝 Descrição / Evidência
-                <span class="al-obs-hint">${val===null ? "(preencha após selecionar nota)" : "(opcional)"}</span>
-              </label>
-              <textarea class="al-obs"
-                id="obs-${al.id}"
-                data-alinea="${al.id}"
+              <label class="al-obs-label" for="obs-${al.id}">📝 Observação / Evidência</label>
+              <textarea class="al-obs" id="obs-${al.id}" data-alinea="${al.id}"
                 placeholder="Descreva a evidência, justificativa ou contexto desta resposta..."
-                rows="3">${obs}</textarea>
+                rows="3" ${soLeitura ? "readonly" : ""}>${obs}</textarea>
             </div>
+
+            <div class="al-anexo-wrap">
+              <div class="anexo-label">📎 Documentos Comprobatórios</div>
+              <div class="anexos-lista" id="anexos-${al.id}">
+                ${renderAnexosHtml(al.id, anexos, soLeitura)}
+              </div>
+              ${!soLeitura ? `
+              <label class="btn-anexo-add" for="file-${al.id}">
+                ＋ Anexar Documento
+                <input type="file" id="file-${al.id}" data-alinea="${al.id}"
+                  accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" multiple style="display:none"/>
+              </label>
+              <span class="anexo-hint">PDF, DOC, DOCX, PNG, JPG · máx. 500 KB por arquivo</span>` : ""}
+            </div>
+
           </div>
         </div>`;
     });
@@ -376,43 +506,113 @@ function renderForm() {
   });
 
   const faltam = totalSetor - respondidas;
-  html += `<div class="submit-zone">
-    <button class="btn-submit${faltam>0?" btn-sd":""}" id="btnSubmit" ${faltam>0?"disabled":""}>
-      ${faltam>0?`Faltam ${faltam} alínea${faltam>1?"s":""} para enviar`:"📤 Enviar Avaliação IMGG"}
-    </button>
-  </div></div>`;
+  if (!soLeitura) {
+    html += `<div class="submit-zone">
+      <button class="btn-submit${faltam>0?" btn-sd":""}" id="btnSubmit" ${faltam>0?"disabled":""}>
+        ${faltam>0 ? `Faltam ${faltam} alínea${faltam>1?"s":""} para enviar` : "📤 Enviar Avaliação IMGG"}
+      </button>
+    </div>`;
+  }
+  html += `</div>`;
 
   document.getElementById("sMain").innerHTML = html;
 
-  document.querySelectorAll(".eb").forEach(btn => {
+  if (soLeitura) return; // sem eventos em modo leitura
+
+  document.querySelectorAll(".sn-btn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const alId  = btn.dataset.alinea;
-      const valor = parseInt(btn.dataset.valor);
-      const obs   = document.getElementById("obs-"+alId)?.value || "";
+      const campo = btn.dataset.campo;
+      const valor = btn.dataset.valor;
       const top   = (document.getElementById("al-"+alId)?.getBoundingClientRect().top||0)+window.scrollY-100;
-      await saveResposta(currentSetorId, alId, valor, obs);
+      await saveResposta(currentSetorId, alId, campo, valor);
       renderForm();
-      requestAnimationFrame(()=>window.scrollTo({top,behavior:"smooth"}));
+      requestAnimationFrame(() => window.scrollTo({ top, behavior:"smooth" }));
     });
   });
 
   document.querySelectorAll(".al-obs").forEach(input => {
     input.addEventListener("blur", async () => {
       const alId = input.dataset.alinea;
-      const r    = respostasSetor[alId];
-      if (r && r.valor !== null && r.valor !== undefined) {
-        await saveResposta(currentSetorId, alId, r.valor, input.value);
-      } else if (input.value.trim()) {
-        respostasSetor[alId] = { valor: null, obs: input.value, ts: new Date().toISOString() };
-      }
+      if (!respostasSetor[alId]) respostasSetor[alId] = { continuidade:null, adequacao:null, obs:"", anexos:[], ts: new Date().toISOString() };
+      respostasSetor[alId].obs = input.value;
+      await saveResposta(currentSetorId, alId, "obs", input.value);
     });
   });
 
-  document.getElementById("btnSubmit")?.addEventListener("click",()=>submitForm(currentSetorId));
+  document.querySelectorAll("input[type=file][data-alinea]").forEach(input => {
+    input.addEventListener("change", async () => {
+      const alId  = input.dataset.alinea;
+      const files = Array.from(input.files);
+      if (!files.length) return;
+      const MAX = 500 * 1024;
+      for (const file of files) {
+        if (file.size > MAX) { toast(`"${file.name}" excede 500 KB. Ignorado.`, "warn"); continue; }
+        const base64 = await fileToBase64(file);
+        if (!respostasSetor[alId]) respostasSetor[alId] = { continuidade:null, adequacao:null, obs:"", anexos:[], ts: new Date().toISOString() };
+        if (!respostasSetor[alId].anexos) respostasSetor[alId].anexos = [];
+        respostasSetor[alId].anexos.push({ nome: file.name, tipo: file.type, base64 });
+        const lista = document.getElementById("anexos-"+alId);
+        if (lista) lista.innerHTML = renderAnexosHtml(alId, respostasSetor[alId].anexos, false);
+        bindAnexoRemove(alId);
+        await saveResposta(currentSetorId, alId, "anexos", respostasSetor[alId].anexos);
+        toast(`"${file.name}" anexado! ✅`, "success");
+      }
+      input.value = "";
+    });
+  });
+
+  dimsSetor.forEach(dim => dim.alineas.forEach(al => bindAnexoRemove(al.id)));
+  document.getElementById("btnSubmit")?.addEventListener("click", () => submitForm(currentSetorId));
 }
 
+function renderAnexosHtml(alId, anexos, soLeitura=false) {
+  if (!anexos || !anexos.length) return `<span class="anexo-empty">Nenhum documento anexado.</span>`;
+  return anexos.map((a, i) => `
+    <div class="anexo-item" data-i="${i}">
+      <span class="anexo-ico">${anexoIco(a.tipo)}</span>
+      <a class="anexo-nome" href="${a.base64}" download="${a.nome}" title="Baixar ${a.nome}">${a.nome}</a>
+      ${!soLeitura ? `<button class="anexo-rm" data-alinea="${alId}" data-i="${i}" title="Remover">✕</button>` : ""}
+    </div>`).join("");
+}
+
+function bindAnexoRemove(alId) {
+  const lista = document.getElementById("anexos-"+alId);
+  if (!lista) return;
+  lista.querySelectorAll(".anexo-rm").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const i = +btn.dataset.i;
+      if (!respostasSetor[alId]?.anexos) return;
+      const nome = respostasSetor[alId].anexos[i]?.nome;
+      respostasSetor[alId].anexos.splice(i, 1);
+      lista.innerHTML = renderAnexosHtml(alId, respostasSetor[alId].anexos, false);
+      bindAnexoRemove(alId);
+      await saveResposta(currentSetorId, alId, "anexos", respostasSetor[alId].anexos);
+      if (nome) toast(`"${nome}" removido.`, "info");
+    });
+  });
+}
+
+function anexoIco(tipo) {
+  if (!tipo) return "📄";
+  if (tipo.includes("pdf"))   return "📕";
+  if (tipo.includes("word") || tipo.includes("document")) return "📘";
+  if (tipo.includes("image")) return "🖼️";
+  return "📄";
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Falha ao ler arquivo"));
+    reader.readAsDataURL(file);
+  });
+}
+
+// ─── Admin Shell ─────────────────────────────────────────────────
 function renderAdminShell() {
-  const setorAsset = SETORES.find(s=>s.id===ADMIN_SETOR_ID);
+  const setorAsset = SETORES.find(s => s.id === ADMIN_SETOR_ID);
   document.getElementById("app").innerHTML = `
     <div class="shell">
       <header class="topbar">
@@ -422,10 +622,18 @@ function renderAdminShell() {
           <span class="tb-sub">Painel Administrativo</span></div>
         </div>
         <div class="topbar-r">
+          <div class="ano-selector-topbar">
+            <span class="ano-label">📅 Ano</span>
+            <div class="ano-btns" id="anoBtns">
+              ${anosDisponiveis.map(a=>`
+                <button class="ano-btn${a.ano===anoSelecionado?" ano-ativo":""}${!a.ativo?" ano-encerrado":""}"
+                  data-ano="${a.ano}" title="${!a.ativo?"Encerrado":"Ativo"}">
+                  ${a.ano}${!a.ativo?" 🔒":""}
+                </button>`).join("")}
+            </div>
+          </div>
           <div class="tb-chip adm-chip">🔐 Administrador</div>
-          <button class="btn-toggle-admin" id="btnResponder">
-            📝 Responder como ${setorAsset?.sigla||"ASSET"}
-          </button>
+          <button class="btn-toggle-admin" id="btnResponder">📝 Responder como ${setorAsset?.sigla||"ASSET"}</button>
           <button class="btn-exp" id="btnXls">⬇ Excel</button>
           <button class="btn-exp" id="btnPdf">🖨 PDF</button>
           <button class="btn-sair" id="btnSair">Sair</button>
@@ -437,51 +645,174 @@ function renderAdminShell() {
         <button class="adm-tab${adminTab==="respostas"?" at-active":""}" data-tab="respostas">📋 Respostas</button>
         <button class="adm-tab${adminTab==="editor"?" at-active":""}"    data-tab="editor">✏️ Alíneas Globais</button>
         <button class="adm-tab${adminTab==="setores"?" at-active":""}"   data-tab="setores">🎯 Alíneas por Setor</button>
+        <button class="adm-tab${adminTab==="anos"?" at-active":""}"      data-tab="anos">📅 Gerenciar Anos</button>
       </nav>
       <main class="admin-main" id="aMain">
         <div class="loading">⏳ Carregando dados do Firebase...</div>
       </main>
     </div>`;
 
+  // Seletor de ano no header admin
+  bindAnoSeletor(async () => {
+    // Ao trocar de ano no admin, recarrega o conteúdo da aba atual
+    document.getElementById("aMain").innerHTML = `<div class="loading">⏳ Carregando ${anoSelecionado}...</div>`;
+    destroyCharts();
+    if (adminTab === "editor")  { renderEditorAlineas(); return; }
+    if (adminTab === "setores") { renderEditorSetores(); return; }
+    if (adminTab === "anos")    { renderEditorAnos(); return; }
+    const all  = await loadAll(), data = buildSetoresData(all);
+    window._adminData = data;
+    if (adminTab === "dashboard") renderDashboardTab(data);
+    if (adminTab === "metricas")  renderMetricasTab(data);
+    if (adminTab === "respostas") renderRespostasTab(data);
+  });
+
   document.getElementById("btnResponder").addEventListener("click", async () => {
-    adminMode=false; currentSetorId=ADMIN_SETOR_ID;
+    adminMode = false; currentSetorId = ADMIN_SETOR_ID;
     await loadRespostas(ADMIN_SETOR_ID);
-    renderSetorShell(SETORES.find(s=>s.id===ADMIN_SETOR_ID), true);
+    renderSetorShell(SETORES.find(s => s.id === ADMIN_SETOR_ID), true);
     renderForm();
   });
-  document.getElementById("btnSair").addEventListener("click",()=>signOut(auth));
+
+  document.getElementById("btnSair").addEventListener("click", () => signOut(auth));
+
   document.querySelectorAll(".adm-tab").forEach(btn => {
     btn.addEventListener("click", async () => {
-      adminTab=btn.dataset.tab;
-      document.querySelectorAll(".adm-tab").forEach(b=>b.classList.toggle("at-active",b.dataset.tab===adminTab));
-      document.getElementById("aMain").innerHTML=`<div class="loading">⏳ Carregando...</div>`;
+      adminTab = btn.dataset.tab;
+      document.querySelectorAll(".adm-tab").forEach(b => b.classList.toggle("at-active", b.dataset.tab === adminTab));
+      document.getElementById("aMain").innerHTML = `<div class="loading">⏳ Carregando...</div>`;
       destroyCharts();
-      if (adminTab==="editor")  { renderEditorAlineas(); return; }
-      if (adminTab==="setores") { renderEditorSetores(); return; }
-      const all=await loadAll(), data=buildSetoresData(all);
-      window._adminData=data;
-      if (adminTab==="dashboard") renderDashboardTab(data);
-      if (adminTab==="metricas")  renderMetricasTab(data);
-      if (adminTab==="respostas") renderRespostasTab(data);
+      if (adminTab === "editor")  { renderEditorAlineas(); return; }
+      if (adminTab === "setores") { renderEditorSetores(); return; }
+      if (adminTab === "anos")    { renderEditorAnos(); return; }
+      const all = await loadAll(), data = buildSetoresData(all);
+      window._adminData = data;
+      if (adminTab === "dashboard") renderDashboardTab(data);
+      if (adminTab === "metricas")  renderMetricasTab(data);
+      if (adminTab === "respostas") renderRespostasTab(data);
     });
   });
 }
 
 async function renderAdminContent() {
-  const all=await loadAll(), data=buildSetoresData(all);
-  window._adminData=data;
+  const all = await loadAll(), data = buildSetoresData(all);
+  window._adminData = data;
   renderDashboardTab(data);
-  document.getElementById("btnXls").addEventListener("click",()=>exportXLS(window._adminData||data));
-  document.getElementById("btnPdf").addEventListener("click",()=>exportPDF(window._adminData||data));
+  document.getElementById("btnXls").addEventListener("click", () => exportXLS(window._adminData || data));
+  document.getElementById("btnPdf").addEventListener("click", () => exportPDF(window._adminData || data));
 }
 
-function renderDashboardTab(data) {
-  const enviados=data.filter(s=>s.status==="enviado").length;
-  const emAnd=data.filter(s=>["em_andamento","concluido"].includes(s.status)).length;
-  const naoIn=data.filter(s=>s.status==="nao_iniciado").length;
-  const mediaIMO=parseFloat((data.reduce((a,s)=>a+s.imo,0)/data.length).toFixed(1));
+// ─── Gerenciar Anos (nova aba admin) ─────────────────────────────
+function renderEditorAnos() {
+  function buildHtml() {
+    return `<div class="adm-wrap">
+      <div class="ed-header">
+        <div>
+          <h2 class="sec-t" style="margin:0">📅 Gerenciar Anos de Avaliação</h2>
+          <p class="ed-sub">Crie e gerencie os anos disponíveis para avaliação. Apenas anos <strong>ativos</strong> aceitam novas respostas dos setores. Anos encerrados ficam em modo somente leitura.</p>
+        </div>
+      </div>
 
-  document.getElementById("aMain").innerHTML=`<div class="adm-wrap">
+      <div class="anos-lista">
+        ${anosDisponiveis.sort((a,b)=>b.ano-a.ano).map(a => `
+          <div class="ano-card${a.ativo ? " ano-card-ativo" : " ano-card-enc"}">
+            <div class="ano-card-l">
+              <span class="ano-card-num">${a.ano}</span>
+              <span class="ano-card-st ${a.ativo ? "acs-ativo" : "acs-enc"}">${a.ativo ? "✅ Ativo" : "🔒 Encerrado"}</span>
+            </div>
+            <div class="ano-card-r">
+              ${a.ativo
+                ? `<button class="btn-ano-enc" data-ano="${a.ano}">Encerrar Ano</button>`
+                : `<button class="btn-ano-reab" data-ano="${a.ano}">Reabrir Ano</button>`}
+              <button class="btn-ano-del" data-ano="${a.ano}" title="Remover ano (não apaga respostas do Firebase)">🗑</button>
+            </div>
+          </div>`).join("")}
+      </div>
+
+      <div class="ano-novo-wrap">
+        <h3 class="met-sh" style="margin-bottom:12px">Adicionar Novo Ano</h3>
+        <div class="ano-novo-row">
+          <input class="ano-inp" id="novoAnoInput" type="number" min="2020" max="2099"
+            placeholder="${new Date().getFullYear() + 1}" value="${new Date().getFullYear() + 1}"/>
+          <button class="btn-ed-save" id="btnAddAno">＋ Adicionar Ano</button>
+        </div>
+        <p class="ed-sub" style="margin-top:8px">O novo ano será criado como <strong>ativo</strong>. Respostas são totalmente independentes por ano.</p>
+      </div>
+    </div>`;
+  }
+
+  function rebind() {
+    document.querySelectorAll(".btn-ano-enc").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const a = anosDisponiveis.find(x => x.ano === btn.dataset.ano);
+        if (!a) return;
+        if (!confirm(`Encerrar o ano ${a.ano}? Os setores não poderão mais editar as respostas.`)) return;
+        a.ativo = false;
+        await saveAnos();
+        toast(`Ano ${a.ano} encerrado. 🔒`, "info");
+        // Atualiza seletor no header
+        document.querySelectorAll(".ano-btn").forEach(b => {
+          if (b.dataset.ano === a.ano) { b.classList.add("ano-encerrado"); b.textContent = a.ano + " 🔒"; }
+        });
+        renderEditorAnos();
+      });
+    });
+
+    document.querySelectorAll(".btn-ano-reab").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const a = anosDisponiveis.find(x => x.ano === btn.dataset.ano);
+        if (!a) return;
+        a.ativo = true;
+        await saveAnos();
+        toast(`Ano ${a.ano} reaberto. ✅`, "success");
+        renderEditorAnos();
+        renderAdminShell();
+        renderAdminContent();
+      });
+    });
+
+    document.querySelectorAll(".btn-ano-del").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        if (anosDisponiveis.length <= 1) { toast("É necessário ter pelo menos 1 ano.", "warn"); return; }
+        if (!confirm(`Remover o ano ${btn.dataset.ano} da lista? As respostas salvas no Firebase NÃO serão apagadas.`)) return;
+        anosDisponiveis = anosDisponiveis.filter(x => x.ano !== btn.dataset.ano);
+        if (anoSelecionado === btn.dataset.ano) {
+          anoSelecionado = anosDisponiveis[anosDisponiveis.length - 1].ano;
+        }
+        await saveAnos();
+        toast(`Ano ${btn.dataset.ano} removido da lista.`, "info");
+        renderAdminShell();
+        renderAdminContent();
+      });
+    });
+
+    document.getElementById("btnAddAno")?.addEventListener("click", async () => {
+      const val = document.getElementById("novoAnoInput")?.value?.trim();
+      if (!val || isNaN(val) || val < 2020 || val > 2099) { toast("Digite um ano válido (2020–2099).", "warn"); return; }
+      if (anosDisponiveis.find(a => a.ano === val)) { toast(`O ano ${val} já existe.`, "warn"); return; }
+      anosDisponiveis.push({ ano: val, ativo: true });
+      anosDisponiveis.sort((a,b) => a.ano - b.ano);
+      await saveAnos();
+      toast(`Ano ${val} adicionado! ✅`, "success");
+      renderAdminShell();
+      renderAdminContent();
+    });
+  }
+
+  document.getElementById("aMain").innerHTML = buildHtml();
+  rebind();
+}
+
+// ─── Dashboard ───────────────────────────────────────────────────
+function renderDashboardTab(data) {
+  const enviados  = data.filter(s => s.status === "enviado").length;
+  const emAnd     = data.filter(s => ["em_andamento","concluido"].includes(s.status)).length;
+  const naoIn     = data.filter(s => s.status === "nao_iniciado").length;
+  const mediaIMO  = parseFloat((data.reduce((a,s) => a+s.imo, 0) / data.length).toFixed(1));
+  const anoAtual  = anosDisponiveis.find(a => a.ano === anoSelecionado);
+
+  document.getElementById("aMain").innerHTML = `<div class="adm-wrap">
+    ${!anoAtual?.ativo ? `<div class="ano-readonly-banner">🔒 Ano <strong>${anoSelecionado}</strong> encerrado — visualização somente leitura.</div>` : ""}
     <div class="kpi-row">
       <div class="kpi k-blue">  <div class="kv">${data.length}</div><div class="kl">Setores</div></div>
       <div class="kpi k-green"> <div class="kv">${enviados}</div>  <div class="kl">Enviados</div></div>
@@ -490,49 +821,50 @@ function renderDashboardTab(data) {
       <div class="kpi k-cyan">  <div class="kv">${mediaIMO}%</div> <div class="kl">IMO Médio</div></div>
     </div>
     <div class="charts-row">
-      <div class="cc cc-bar">   <div class="cc-h">IMO por Setor (%)</div>     <canvas id="cBar"></canvas></div>
-      <div class="cc cc-radar"> <div class="cc-h">Média por Dimensão</div>    <canvas id="cRadar"></canvas></div>
-      <div class="cc cc-donut"> <div class="cc-h">Status das Avaliações</div> <canvas id="cDonut"></canvas></div>
+      <div class="cc cc-bar">   <div class="cc-h">IMO por Setor (%) — ${anoSelecionado}</div><canvas id="cBar"></canvas></div>
+      <div class="cc cc-radar"> <div class="cc-h">Média por Dimensão</div>                   <canvas id="cRadar"></canvas></div>
+      <div class="cc cc-donut"> <div class="cc-h">Status das Avaliações</div>                <canvas id="cDonut"></canvas></div>
     </div>
     <div class="sec-hdr">
-      <h2 class="sec-t">Setores</h2>
+      <h2 class="sec-t">Setores — ${anoSelecionado}</h2>
       <input class="s-search" id="sSearch" placeholder="🔍 Filtrar setor...">
     </div>
-    <div class="setores-grid" id="setGrid">${data.map(s=>setorCardHtml(s)).join("")}</div>
+    <div class="setores-grid" id="setGrid">${data.map(s => setorCardHtml(s)).join("")}</div>
   </div>`;
 
-  requestAnimationFrame(()=>{ destroyCharts(); renderChartBar(data); renderChartRadar(data); renderChartDonut(enviados,emAnd,naoIn); });
-  document.getElementById("sSearch").addEventListener("input",e=>{
-    const q=e.target.value.toLowerCase();
-    document.querySelectorAll(".setor-card").forEach(c=>{ c.style.display=c.dataset.n.toLowerCase().includes(q)?"":'none'; });
+  requestAnimationFrame(() => { destroyCharts(); renderChartBar(data); renderChartRadar(data); renderChartDonut(enviados, emAnd, naoIn); });
+  document.getElementById("sSearch").addEventListener("input", e => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll(".setor-card").forEach(c => { c.style.display = c.dataset.n.toLowerCase().includes(q) ? "" : "none"; });
   });
-  document.querySelectorAll(".setor-card").forEach(card=>{
-    card.addEventListener("click",()=>{ const s=data.find(x=>x.id===card.dataset.id); if(s) renderDetalheSetor(s); });
+  document.querySelectorAll(".setor-card").forEach(card => {
+    card.addEventListener("click", () => { const s = data.find(x => x.id === card.dataset.id); if(s) renderDetalheSetor(s); });
   });
 }
 
+// ─── Métricas ─────────────────────────────────────────────────────
 function renderMetricasTab(data) {
-  const total=data.length;
-  const mediaIMO=parseFloat((data.reduce((a,s)=>a+s.imo,0)/total).toFixed(1));
-  const dimMedias=DIMENSOES.map((dim,di)=>{
-    const vals=data.map(s=>s.dimScores[di]??0);
-    return {dim,di,med:parseFloat((vals.reduce((a,v)=>a+v,0)/total).toFixed(1)),min:Math.min(...vals),max:Math.max(...vals)};
+  const total    = data.length;
+  const mediaIMO = parseFloat((data.reduce((a,s) => a+s.imo, 0) / total).toFixed(1));
+  const dimMedias = DIMENSOES.map((dim, di) => {
+    const vals = data.map(s => s.dimScores[di] ?? 0);
+    return { dim, di, med: parseFloat((vals.reduce((a,v) => a+v, 0) / total).toFixed(1)), min: Math.min(...vals), max: Math.max(...vals) };
   });
-  const ranking=[...data].sort((a,b)=>b.imo-a.imo);
-  const faixas=[
-    {label:"Crítico (0–20%)",    min:0, max:20,  cor:"#ef4444",count:0},
-    {label:"Baixo (20–40%)",     min:20,max:40,  cor:"#f97316",count:0},
-    {label:"Moderado (40–60%)",  min:40,max:60,  cor:"#eab308",count:0},
-    {label:"Bom (60–80%)",       min:60,max:80,  cor:"#22c55e",count:0},
-    {label:"Excelente (80–100%)",min:80,max:101, cor:"#06b6d4",count:0},
+  const ranking = [...data].sort((a,b) => b.imo - a.imo);
+  const faixas = [
+    { label:"Crítico (0–20%)",    min:0,  max:20,  cor:"#ef4444", count:0 },
+    { label:"Baixo (20–40%)",     min:20, max:40,  cor:"#f97316", count:0 },
+    { label:"Moderado (40–60%)",  min:40, max:60,  cor:"#eab308", count:0 },
+    { label:"Bom (60–80%)",       min:60, max:80,  cor:"#22c55e", count:0 },
+    { label:"Excelente (80–100%)",min:80, max:101, cor:"#06b6d4", count:0 },
   ];
-  data.forEach(s=>{ const f=faixas.find(f=>s.imo>=f.min&&s.imo<f.max); if(f) f.count++; });
+  data.forEach(s => { const f = faixas.find(f => s.imo >= f.min && s.imo < f.max); if(f) f.count++; });
 
-  document.getElementById("aMain").innerHTML=`<div class="adm-wrap">
-    <h2 class="sec-t" style="margin-bottom:20px">📈 Métricas e Indicadores — IMGG 2025</h2>
+  document.getElementById("aMain").innerHTML = `<div class="adm-wrap">
+    <h2 class="sec-t" style="margin-bottom:20px">📈 Métricas e Indicadores — IMGG ${anoSelecionado}</h2>
     <div class="met-hero">
       <div class="mh-left">
-        <div class="mh-label">Índice de Maturidade Organizacional Médio</div>
+        <div class="mh-label">Índice de Maturidade Organizacional Médio — ${anoSelecionado}</div>
         <div class="mh-value" style="color:${imoColor(mediaIMO)}">${mediaIMO}%</div>
         <div class="mh-sub">${imoNivel(mediaIMO)}</div>
       </div>
@@ -541,10 +873,10 @@ function renderMetricasTab(data) {
     <div class="met-section">
       <h3 class="met-sh">Distribuição por Faixa de Maturidade</h3>
       <div class="faixas-grid">
-        ${faixas.map(f=>`
+        ${faixas.map(f => `
           <div class="faixa-card" style="border-left:4px solid ${f.cor}">
             <div class="fc-count" style="color:${f.cor}">${f.count}</div>
-            <div class="fc-pct">${total>0?Math.round((f.count/total)*100):0}% dos setores</div>
+            <div class="fc-pct">${total > 0 ? Math.round((f.count/total)*100) : 0}% dos setores</div>
             <div class="fc-label">${f.label}</div>
           </div>`).join("")}
       </div>
@@ -552,7 +884,7 @@ function renderMetricasTab(data) {
     <div class="met-section">
       <h3 class="met-sh">Ranking de Setores por IMO</h3>
       <div class="ranking-list">
-        ${ranking.map((s,i)=>`
+        ${ranking.map((s,i) => `
           <div class="rank-row">
             <div class="rank-pos ${i<3?"rp-top":""}">${i+1}º</div>
             <div class="rank-sig">${s.sigla}</div>
@@ -572,7 +904,7 @@ function renderMetricasTab(data) {
     </div>
     <div class="met-section">
       <h3 class="met-sh">Detalhamento por Dimensão</h3>
-      ${dimMedias.map(({dim,di,med,min,max})=>`
+      ${dimMedias.map(({dim,di,med,min,max}) => `
         <div class="dim-met-card">
           <div class="dmc-head">
             <span class="dmc-ico">${dim.icone}</span>
@@ -588,7 +920,7 @@ function renderMetricasTab(data) {
           </div>
           <div class="dmc-bar-wrap"><div class="dmc-bar" style="width:${med}%;background:${imoColor(med)}"></div></div>
           <div class="dmc-setores">
-            ${data.map(s=>{ const v=s.dimScores[di]??0; return `<div class="dmc-s">
+            ${data.map(s => { const v = s.dimScores[di]??0; return `<div class="dmc-s">
               <span class="dmc-ssig">${s.sigla}</span>
               <div class="dmc-sbar"><div style="width:${v}%;background:${imoColor(v)};height:100%;border-radius:2px"></div></div>
               <span class="dmc-sv" style="color:${imoColor(v)}">${v}%</span>
@@ -597,17 +929,22 @@ function renderMetricasTab(data) {
         </div>`).join("")}
     </div>
     <div class="met-section">
-      <h3 class="met-sh">Mapa de Calor — Média por Alínea</h3>
+      <h3 class="met-sh">Mapa de Calor — % "Sim" por Alínea</h3>
       <div class="heatmap-wrap">
-        ${DIMENSOES.map(dim=>`
+        ${DIMENSOES.map(dim => `
           <div class="hm-dim">
             <div class="hm-dtit">${dim.icone} ${dim.titulo}</div>
             <div class="hm-alineas">
-              ${dim.alineas.map(al=>{
-                const medAl=data.length>0?parseFloat((data.reduce((a,s)=>a+(s.resp[al.id]?.valor||0),0)/data.length).toFixed(1)):0;
-                const pct=(medAl/5)*100;
-                return `<div class="hm-cel" style="background:${imoColorA(pct,.85)}" title="${al.texto} — Média: ${medAl}/5">
-                  <div class="hm-code">${al.id}</div><div class="hm-val">${medAl}</div>
+              ${dim.alineas.map(al => {
+                let simCount = 0, total2 = data.length * 2;
+                data.forEach(s => {
+                  const r = s.resp[al.id];
+                  if (r?.continuidade === "sim") simCount++;
+                  if (r?.adequacao    === "sim") simCount++;
+                });
+                const pct = total2 > 0 ? parseFloat(((simCount/total2)*100).toFixed(1)) : 0;
+                return `<div class="hm-cel" style="background:${imoColorA(pct,.85)}" title="${al.texto} — Sim: ${pct}%">
+                  <div class="hm-code">${al.id}</div><div class="hm-val">${pct}%</div>
                 </div>`;
               }).join("")}
             </div>
@@ -616,38 +953,39 @@ function renderMetricasTab(data) {
     </div>
   </div>`;
 
-  requestAnimationFrame(()=>{
+  requestAnimationFrame(() => {
     destroyCharts();
-    chartInstances.metDonut=new Chart(document.getElementById("cMetDonut"),{
+    chartInstances.metDonut = new Chart(document.getElementById("cMetDonut"), {
       type:"doughnut",
-      data:{datasets:[{data:[mediaIMO,100-mediaIMO],backgroundColor:[imoColor(mediaIMO),"#f1f5f9"],borderWidth:0}]},
-      options:{cutout:"72%",plugins:{legend:{display:false},tooltip:{enabled:false}}},
-      plugins:[{id:"ct",afterDraw(c){const{ctx,chartArea:{top,bottom,left,right}}=c;const cx=(left+right)/2,cy=(top+bottom)/2;ctx.save();ctx.font="bold 22px Sora,sans-serif";ctx.fillStyle=imoColor(mediaIMO);ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(mediaIMO+"%",cx,cy);ctx.restore();}}]
+      data:{ datasets:[{ data:[mediaIMO, 100-mediaIMO], backgroundColor:[imoColor(mediaIMO),"#f1f5f9"], borderWidth:0 }] },
+      options:{ cutout:"72%", plugins:{ legend:{display:false}, tooltip:{enabled:false} } },
+      plugins:[{ id:"ct", afterDraw(c) { const{ctx,chartArea:{top,bottom,left,right}}=c; const cx=(left+right)/2,cy=(top+bottom)/2; ctx.save(); ctx.font="bold 22px Sora,sans-serif"; ctx.fillStyle=imoColor(mediaIMO); ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(mediaIMO+"%",cx,cy); ctx.restore(); } }]
     });
-    const dimLabels=DIMENSOES.map(d=>d.titulo.split(" ").slice(0,2).join(" "));
-    const dimVals=DIMENSOES.map((_,di)=>parseFloat((data.reduce((a,s)=>a+(s.dimScores[di]??0),0)/data.length).toFixed(1)));
-    chartInstances.dimBar=new Chart(document.getElementById("cDimBar"),{
-      type:"bar",data:{labels:dimLabels,datasets:[{label:"%",data:dimVals,backgroundColor:dimVals.map(v=>imoColorA(v,.75)),borderColor:dimVals.map(v=>imoColor(v)),borderWidth:2,borderRadius:8}]},
-      options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+"%"}}}}
+    const dimLabels = DIMENSOES.map(d => d.titulo.split(" ").slice(0,2).join(" "));
+    const dimVals   = DIMENSOES.map((_,di) => parseFloat((data.reduce((a,s) => a+(s.dimScores[di]??0), 0) / data.length).toFixed(1)));
+    chartInstances.dimBar = new Chart(document.getElementById("cDimBar"), {
+      type:"bar", data:{ labels:dimLabels, datasets:[{ label:"%", data:dimVals, backgroundColor:dimVals.map(v=>imoColorA(v,.75)), borderColor:dimVals.map(v=>imoColor(v)), borderWidth:2, borderRadius:8 }] },
+      options:{ responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+"%"}}} }
     });
-    chartInstances.dimRadar=new Chart(document.getElementById("cDimRadar"),{
-      type:"radar",data:{labels:dimLabels,datasets:[{label:"Média",data:dimVals,backgroundColor:"rgba(6,182,212,.12)",borderColor:"#06b6d4",borderWidth:2,pointBackgroundColor:"#06b6d4",pointRadius:4}]},
-      options:{responsive:true,scales:{r:{beginAtZero:true,max:100,ticks:{display:false}}},plugins:{legend:{display:false}}}
+    chartInstances.dimRadar = new Chart(document.getElementById("cDimRadar"), {
+      type:"radar", data:{ labels:dimLabels, datasets:[{ label:"Média", data:dimVals, backgroundColor:"rgba(6,182,212,.12)", borderColor:"#06b6d4", borderWidth:2, pointBackgroundColor:"#06b6d4", pointRadius:4 }] },
+      options:{ responsive:true, scales:{r:{beginAtZero:true,max:100,ticks:{display:false}}}, plugins:{legend:{display:false}} }
     });
   });
 }
 
+// ─── Respostas ────────────────────────────────────────────────────
 function renderRespostasTab(data) {
-  document.getElementById("aMain").innerHTML=`<div class="adm-wrap">
+  document.getElementById("aMain").innerHTML = `<div class="adm-wrap">
     <div class="sec-hdr">
-      <h2 class="sec-t">Listagem Completa de Respostas</h2>
+      <h2 class="sec-t">Respostas — ${anoSelecionado}</h2>
       <input class="s-search" id="sSearchResp" placeholder="🔍 Filtrar setor...">
     </div>
     <div style="margin-bottom:28px">
       <h3 class="met-sh">Desempenho Médio por Dimensão</h3>
       <div class="dim-analysis">
-        ${DIMENSOES.map((dim,di)=>{
-          const med=parseFloat((data.reduce((a,s)=>a+(s.dimScores[di]??0),0)/data.length).toFixed(1));
+        ${DIMENSOES.map((dim, di) => {
+          const med = parseFloat((data.reduce((a,s) => a+(s.dimScores[di]??0), 0) / data.length).toFixed(1));
           return `<div class="da-r">
             <span class="da-ico">${dim.icone}</span>
             <span class="da-nome">${dim.titulo}</span>
@@ -658,22 +996,23 @@ function renderRespostasTab(data) {
       </div>
     </div>
     <div class="listagem" id="listaResp">
-      ${data.filter(s=>s.respondidas>0).map(s=>listItemHtml(s)).join("")}
+      ${data.filter(s => s.respondidas > 0).map(s => listItemHtml(s)).join("")}
     </div>
   </div>`;
-  document.getElementById("sSearchResp").addEventListener("input",e=>{
-    const q=e.target.value.toLowerCase();
-    document.querySelectorAll(".ls-det").forEach(c=>{ c.style.display=(c.dataset.n||"").toLowerCase().includes(q)?"":'none'; });
+  document.getElementById("sSearchResp").addEventListener("input", e => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll(".ls-det").forEach(c => { c.style.display = (c.dataset.n||"").toLowerCase().includes(q) ? "" : "none"; });
   });
-  document.querySelectorAll(".ls-det").forEach((el,i)=>{
-    const s=data.filter(s=>s.respondidas>0)[i]; if(s) el.dataset.n=s.nome;
+  document.querySelectorAll(".ls-det").forEach((el, i) => {
+    const s = data.filter(s => s.respondidas > 0)[i]; if(s) el.dataset.n = s.nome;
   });
 }
 
+// ─── Editor Alíneas Globais ────────────────────────────────────────
 function renderEditorAlineas() {
-  let editDims=JSON.parse(JSON.stringify(DIMENSOES));
+  let editDims = JSON.parse(JSON.stringify(DIMENSOES));
 
-  function buildDimHtml(dim,di) {
+  function buildDimHtml(dim, di) {
     return `<div class="ed-dim-card" data-di="${di}">
       <div class="edc-head">
         <div class="edc-hrow">
@@ -688,7 +1027,7 @@ function renderEditorAlineas() {
         <div class="edc-badge">${dim.id} · ${dim.alineas.length} alínea${dim.alineas.length!==1?"s":""}</div>
       </div>
       <div class="ed-alineas">
-        ${dim.alineas.map((al,ai)=>`
+        ${dim.alineas.map((al,ai) => `
           <div class="eda-row" data-di="${di}" data-ai="${ai}">
             <span class="eda-idx">${String.fromCharCode(65+ai)}</span>
             <div class="eda-mid">
@@ -703,59 +1042,59 @@ function renderEditorAlineas() {
   }
 
   function rebind() {
-    document.querySelectorAll(".ed-ico-inp,.ed-titulo-inp").forEach(inp=>{
-      inp.addEventListener("change",()=>{ editDims[+inp.dataset.di][inp.dataset.f]=inp.value; });
+    document.querySelectorAll(".ed-ico-inp,.ed-titulo-inp").forEach(inp => {
+      inp.addEventListener("change", () => { editDims[+inp.dataset.di][inp.dataset.f] = inp.value; });
     });
-    document.querySelectorAll(".eda-inp").forEach(inp=>{
-      inp.addEventListener("change",()=>{ editDims[+inp.dataset.di].alineas[+inp.dataset.ai].texto=inp.value; });
+    document.querySelectorAll(".eda-inp").forEach(inp => {
+      inp.addEventListener("change", () => { editDims[+inp.dataset.di].alineas[+inp.dataset.ai].texto = inp.value; });
     });
-    document.querySelectorAll(".eda-del").forEach(btn=>{
-      btn.addEventListener("click",()=>{
-        const di=+btn.dataset.di,ai=+btn.dataset.ai;
+    document.querySelectorAll(".eda-del").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const di=+btn.dataset.di, ai=+btn.dataset.ai;
         if (editDims[di].alineas.length<=1){toast("A dimensão precisa de pelo menos 1 alínea.","warn");return;}
         editDims[di].alineas.splice(ai,1); reindexAlineas(editDims[di]); rerender();
       });
     });
-    document.querySelectorAll(".btn-add-al").forEach(btn=>{
-      btn.addEventListener("click",()=>{
-        const di=+btn.dataset.di,dim=editDims[di];
-        dim.alineas.push({id:`${dim.id}${String.fromCharCode(97+dim.alineas.length)}`,texto:""});
+    document.querySelectorAll(".btn-add-al").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const di=+btn.dataset.di, dim=editDims[di];
+        dim.alineas.push({ id:`${dim.id}${String.fromCharCode(97+dim.alineas.length)}`, texto:"" });
         rerender();
-        setTimeout(()=>{ const ins=document.querySelectorAll(`.eda-inp[data-di="${di}"]`); ins[ins.length-1]?.focus(); },50);
+        setTimeout(() => { const ins=document.querySelectorAll(`.eda-inp[data-di="${di}"]`); ins[ins.length-1]?.focus(); }, 50);
       });
     });
-    document.querySelectorAll(".edc-up").forEach(btn=>{
-      btn.addEventListener("click",()=>{
+    document.querySelectorAll(".edc-up").forEach(btn => {
+      btn.addEventListener("click", () => {
         const di=+btn.dataset.di; if(di===0)return;
         [editDims[di-1],editDims[di]]=[editDims[di],editDims[di-1]]; reindexDims(); rerender();
       });
     });
-    document.querySelectorAll(".edc-dn").forEach(btn=>{
-      btn.addEventListener("click",()=>{
+    document.querySelectorAll(".edc-dn").forEach(btn => {
+      btn.addEventListener("click", () => {
         const di=+btn.dataset.di; if(di===editDims.length-1)return;
         [editDims[di],editDims[di+1]]=[editDims[di+1],editDims[di]]; reindexDims(); rerender();
       });
     });
-    document.querySelectorAll(".edc-del").forEach(btn=>{
-      btn.addEventListener("click",()=>{
+    document.querySelectorAll(".edc-del").forEach(btn => {
+      btn.addEventListener("click", () => {
         const di=+btn.dataset.di;
         if(editDims.length<=1){toast("O instrumento precisa de pelo menos 1 dimensão.","warn");return;}
         if(!confirm(`Remover a dimensão "${editDims[di].titulo}"?`))return;
         editDims.splice(di,1); reindexDims(); rerender();
       });
     });
-    document.getElementById("btnAddDim").addEventListener("click",()=>{
+    document.getElementById("btnAddDim").addEventListener("click", () => {
       const next=editDims.length+1;
-      editDims.push({id:`D${next}`,titulo:`Nova Dimensão ${next}`,icone:"📌",alineas:[{id:`D${next}a`,texto:""}]});
+      editDims.push({ id:`D${next}`, titulo:`Nova Dimensão ${next}`, icone:"📌", alineas:[{id:`D${next}a`,texto:""}] });
       rerender();
-      setTimeout(()=>{ const ins=document.querySelectorAll(".ed-titulo-inp"); ins[ins.length-1]?.focus(); ins[ins.length-1]?.select(); },50);
+      setTimeout(() => { const ins=document.querySelectorAll(".ed-titulo-inp"); ins[ins.length-1]?.focus(); ins[ins.length-1]?.select(); }, 50);
     });
-    document.getElementById("btnEdSave").addEventListener("click",async()=>{
-      document.querySelectorAll(".ed-ico-inp,.ed-titulo-inp").forEach(inp=>{ editDims[+inp.dataset.di][inp.dataset.f]=inp.value; });
-      document.querySelectorAll(".eda-inp").forEach(inp=>{ editDims[+inp.dataset.di].alineas[+inp.dataset.ai].texto=inp.value; });
-      for(const dim of editDims){
-        if(!dim.titulo.trim()){toast("Todas as dimensões precisam ter título.","warn");return;}
-        for(const al of dim.alineas){if(!al.texto.trim()){toast(`Preencha todas as alíneas. (${dim.titulo})`,"warn");return;}}
+    document.getElementById("btnEdSave").addEventListener("click", async () => {
+      document.querySelectorAll(".ed-ico-inp,.ed-titulo-inp").forEach(inp => { editDims[+inp.dataset.di][inp.dataset.f]=inp.value; });
+      document.querySelectorAll(".eda-inp").forEach(inp => { editDims[+inp.dataset.di].alineas[+inp.dataset.ai].texto=inp.value; });
+      for (const dim of editDims) {
+        if (!dim.titulo.trim()) { toast("Todas as dimensões precisam ter título.","warn"); return; }
+        for (const al of dim.alineas) { if (!al.texto.trim()) { toast(`Preencha todas as alíneas. (${dim.titulo})`,"warn"); return; } }
       }
       const btn=document.getElementById("btnEdSave");
       btn.textContent="Salvando..."; btn.disabled=true;
@@ -763,23 +1102,22 @@ function renderEditorAlineas() {
         await saveDimensoesConfig(editDims);
         toast("Alíneas salvas e publicadas! ✅","success");
         btn.textContent="💾 Salvar e Publicar"; btn.disabled=false; rerender();
-      } catch(e){
-        toast("Erro ao salvar — verifique as regras do Firestore. ("+e.code+")","warn");
-        console.error(e);
+      } catch(e) {
+        toast("Erro ao salvar. ("+e.code+")","warn"); console.error(e);
         btn.textContent="💾 Salvar e Publicar"; btn.disabled=false;
       }
     });
-    document.getElementById("btnEdReset").addEventListener("click",()=>{
-      if(!confirm("Restaurar alíneas padrão?"))return;
-      editDims=JSON.parse(JSON.stringify(DIMENSOES_PADRAO)); rerender();
+    document.getElementById("btnEdReset").addEventListener("click", () => {
+      if (!confirm("Restaurar alíneas padrão?")) return;
+      editDims = JSON.parse(JSON.stringify(DIMENSOES_PADRAO)); rerender();
     });
   }
 
-  function reindexDims(){ editDims.forEach((dim,i)=>{ dim.id=`D${i+1}`; reindexAlineas(dim); }); }
-  function reindexAlineas(dim){ dim.alineas.forEach((al,ai)=>{ al.id=`${dim.id}${String.fromCharCode(97+ai)}`; }); }
-  function rerender(){ document.getElementById("edDims").innerHTML=editDims.map((dim,di)=>buildDimHtml(dim,di)).join(""); rebind(); }
+  function reindexDims() { editDims.forEach((dim,i) => { dim.id=`D${i+1}`; reindexAlineas(dim); }); }
+  function reindexAlineas(dim) { dim.alineas.forEach((al,ai) => { al.id=`${dim.id}${String.fromCharCode(97+ai)}`; }); }
+  function rerender() { document.getElementById("edDims").innerHTML=editDims.map((dim,di)=>buildDimHtml(dim,di)).join(""); rebind(); }
 
-  document.getElementById("aMain").innerHTML=`<div class="adm-wrap">
+  document.getElementById("aMain").innerHTML = `<div class="adm-wrap">
     <div class="ed-header">
       <div>
         <h2 class="sec-t" style="margin:0">✏️ Alíneas Globais</h2>
@@ -796,30 +1134,31 @@ function renderEditorAlineas() {
   rebind();
 }
 
+// ─── Editor Setores ───────────────────────────────────────────────
 function renderEditorSetores() {
   let setorSel = SETORES[0].id;
 
   function getAtivas(sid) {
-    const cfg=setorConfig[sid];
-    if (!cfg||!cfg.alineasAtivas||cfg.alineasAtivas.length===0)
-      return new Set(DIMENSOES.flatMap(d=>d.alineas.map(a=>a.id)));
+    const cfg = setorConfig[sid];
+    if (!cfg || !cfg.alineasAtivas || cfg.alineasAtivas.length === 0)
+      return new Set(DIMENSOES.flatMap(d => d.alineas.map(a => a.id)));
     return new Set(cfg.alineasAtivas);
   }
 
   function buildSetorBtns() {
-    return SETORES.map(s=>{
-      const cfg=setorConfig[s.id];
-      const temCfg=cfg&&cfg.alineasAtivas&&cfg.alineasAtivas.length>0;
+    return SETORES.map(s => {
+      const cfg = setorConfig[s.id];
+      const temCfg = cfg && cfg.alineasAtivas && cfg.alineasAtivas.length > 0;
       return `<button class="setor-sel-btn${s.id===setorSel?" ss-active":""}" data-sid="${s.id}">
         <span class="ss-sig">${s.sigla}</span>
-        ${temCfg?`<span class="ss-badge">${cfg.alineasAtivas.length} al.</span>`:`<span class="ss-badge ss-all">todas</span>`}
+        ${temCfg ? `<span class="ss-badge">${cfg.alineasAtivas.length} al.</span>` : `<span class="ss-badge ss-all">todas</span>`}
       </button>`;
     }).join("");
   }
 
   function buildPanel(sid, ativas) {
-    const setor=SETORES.find(s=>s.id===sid);
-    const totalG=DIMENSOES.reduce((a,d)=>a+d.alineas.length,0);
+    const setor  = SETORES.find(s => s.id === sid);
+    const totalG = DIMENSOES.reduce((a,d) => a+d.alineas.length, 0);
     return `
       <div class="scp-head">
         <div class="scp-info">
@@ -830,13 +1169,13 @@ function renderEditorSetores() {
           </div>
         </div>
         <div class="scp-actions">
-          <button class="btn-sel-all" id="btnSelAll">Selecionar todas</button>
+          <button class="btn-sel-all"  id="btnSelAll">Selecionar todas</button>
           <button class="btn-sel-none" id="btnSelNone">Limpar seleção</button>
         </div>
       </div>
       <div class="scp-dims">
-        ${DIMENSOES.map((dim,di)=>{
-          const qAtivas=dim.alineas.filter(al=>ativas.has(al.id)).length;
+        ${DIMENSOES.map((dim, di) => {
+          const qAtivas = dim.alineas.filter(al => ativas.has(al.id)).length;
           return `<div class="scp-dim">
             <div class="scp-dim-hdr">
               <label class="scp-dim-check">
@@ -848,10 +1187,9 @@ function renderEditorSetores() {
               <span class="scp-dim-ct" id="dimct-${di}">${qAtivas}/${dim.alineas.length}</span>
             </div>
             <div class="scp-alineas">
-              ${dim.alineas.map((al,ai)=>`
+              ${dim.alineas.map((al, ai) => `
                 <label class="scp-al-row${ativas.has(al.id)?" scp-al-on":""}">
-                  <input type="checkbox" class="ck-al" data-alid="${al.id}" data-di="${di}"
-                    ${ativas.has(al.id)?"checked":""}/>
+                  <input type="checkbox" class="ck-al" data-alid="${al.id}" data-di="${di}" ${ativas.has(al.id)?"checked":""}/>
                   <span class="scp-al-idx">${String.fromCharCode(65+ai)}</span>
                   <span class="scp-al-txt">${al.texto}</span>
                 </label>`).join("")}
@@ -862,82 +1200,81 @@ function renderEditorSetores() {
   }
 
   function rebindPanel(ativas) {
-    document.querySelectorAll(".ck-dim[data-ind]").forEach(ck=>{ ck.indeterminate=true; });
-    document.querySelectorAll(".ck-al").forEach(ck=>{
-      ck.addEventListener("change",()=>{
-        if(ck.checked) ativas.add(ck.dataset.alid); else ativas.delete(ck.dataset.alid);
-        ck.closest(".scp-al-row").classList.toggle("scp-al-on",ck.checked);
-        updateDimCk(+ck.dataset.di,ativas); updateCount(ativas);
+    document.querySelectorAll(".ck-dim[data-ind]").forEach(ck => { ck.indeterminate = true; });
+    document.querySelectorAll(".ck-al").forEach(ck => {
+      ck.addEventListener("change", () => {
+        if (ck.checked) ativas.add(ck.dataset.alid); else ativas.delete(ck.dataset.alid);
+        ck.closest(".scp-al-row").classList.toggle("scp-al-on", ck.checked);
+        updateDimCk(+ck.dataset.di, ativas); updateCount(ativas);
       });
     });
-    document.querySelectorAll(".ck-dim").forEach(ck=>{
-      ck.addEventListener("change",()=>{
+    document.querySelectorAll(".ck-dim").forEach(ck => {
+      ck.addEventListener("change", () => {
         const di=+ck.dataset.di, dim=DIMENSOES[di];
-        dim.alineas.forEach(al=>{
-          if(ck.checked) ativas.add(al.id); else ativas.delete(al.id);
-          const c=document.querySelector(`.ck-al[data-alid="${al.id}"]`);
-          if(c){c.checked=ck.checked;c.closest(".scp-al-row").classList.toggle("scp-al-on",ck.checked);}
+        dim.alineas.forEach(al => {
+          if (ck.checked) ativas.add(al.id); else ativas.delete(al.id);
+          const c = document.querySelector(`.ck-al[data-alid="${al.id}"]`);
+          if (c) { c.checked=ck.checked; c.closest(".scp-al-row").classList.toggle("scp-al-on",ck.checked); }
         });
         ck.indeterminate=false; updateCount(ativas); updateDimCount(di,ativas);
       });
     });
-    document.getElementById("btnSelAll").addEventListener("click",()=>{
-      DIMENSOES.forEach(d=>d.alineas.forEach(al=>ativas.add(al.id))); refreshPanel(ativas);
+    document.getElementById("btnSelAll").addEventListener("click", () => {
+      DIMENSOES.forEach(d => d.alineas.forEach(al => ativas.add(al.id))); refreshPanel(ativas);
     });
-    document.getElementById("btnSelNone").addEventListener("click",()=>{ ativas.clear(); refreshPanel(ativas); });
-    document.getElementById("btnSalvarSetor").addEventListener("click",async()=>{
-      const totalG=DIMENSOES.reduce((a,d)=>a+d.alineas.length,0);
-      if(ativas.size===totalG) delete setorConfig[setorSel];
-      else setorConfig[setorSel]={alineasAtivas:[...ativas]};
+    document.getElementById("btnSelNone").addEventListener("click", () => { ativas.clear(); refreshPanel(ativas); });
+    document.getElementById("btnSalvarSetor").addEventListener("click", async () => {
+      const totalG = DIMENSOES.reduce((a,d) => a+d.alineas.length, 0);
+      if (ativas.size === totalG) delete setorConfig[setorSel];
+      else setorConfig[setorSel] = { alineasAtivas: [...ativas] };
       const btn=document.getElementById("btnSalvarSetor");
       btn.textContent="Salvando..."; btn.disabled=true;
       try {
         await saveSetorConfig();
         toast("Configuração do setor salva! ✅","success");
         btn.textContent="💾 Salvar Configuração"; btn.disabled=false;
-        document.getElementById("setorBtns").innerHTML=buildSetorBtns();
+        document.getElementById("setorBtns").innerHTML = buildSetorBtns();
         bindSetorBtns();
-      } catch(e){
-        toast("Erro ao salvar — verifique as regras do Firestore. ("+e.code+")","warn");
-        console.error(e);
+      } catch(e) {
+        toast("Erro ao salvar. ("+e.code+")","warn"); console.error(e);
         btn.textContent="💾 Salvar Configuração"; btn.disabled=false;
       }
     });
   }
 
-  function updateDimCk(di,ativas){
-    const dim=DIMENSOES[di],ck=document.querySelector(`.ck-dim[data-di="${di}"]`);
-    if(!ck)return;
-    const q=dim.alineas.filter(al=>ativas.has(al.id)).length;
+  function updateDimCk(di, ativas) {
+    const dim=DIMENSOES[di], ck=document.querySelector(`.ck-dim[data-di="${di}"]`);
+    if (!ck) return;
+    const q = dim.alineas.filter(al => ativas.has(al.id)).length;
     ck.checked=q===dim.alineas.length; ck.indeterminate=q>0&&q<dim.alineas.length;
-    updateDimCount(di,ativas);
+    updateDimCount(di, ativas);
   }
-  function updateDimCount(di,ativas){
-    const dim=DIMENSOES[di],el=document.getElementById(`dimct-${di}`);
-    if(el) el.textContent=`${dim.alineas.filter(al=>ativas.has(al.id)).length}/${dim.alineas.length}`;
+  function updateDimCount(di, ativas) {
+    const dim=DIMENSOES[di], el=document.getElementById(`dimct-${di}`);
+    if (el) el.textContent = `${dim.alineas.filter(al=>ativas.has(al.id)).length}/${dim.alineas.length}`;
   }
-  function updateCount(ativas){
+  function updateCount(ativas) {
     const el=document.getElementById("ativasCount");
     const total=DIMENSOES.reduce((a,d)=>a+d.alineas.length,0);
-    if(el) el.textContent=`${ativas.size} de ${total} alíneas selecionadas`;
+    if (el) el.textContent = `${ativas.size} de ${total} alíneas selecionadas`;
   }
-  function refreshPanel(ativas){
-    document.getElementById("setorPanel").innerHTML=buildPanel(setorSel,ativas);
+  function refreshPanel(ativas) {
+    document.getElementById("setorPanel").innerHTML = buildPanel(setorSel, ativas);
     rebindPanel(ativas);
   }
-  function bindSetorBtns(){
-    document.querySelectorAll(".setor-sel-btn").forEach(btn=>{
-      btn.addEventListener("click",()=>{
-        setorSel=btn.dataset.sid;
-        document.querySelectorAll(".setor-sel-btn").forEach(b=>b.classList.toggle("ss-active",b.dataset.sid===setorSel));
-        const a=getAtivas(setorSel);
-        document.getElementById("setorPanel").innerHTML=buildPanel(setorSel,a);
+  function bindSetorBtns() {
+    document.querySelectorAll(".setor-sel-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        setorSel = btn.dataset.sid;
+        document.querySelectorAll(".setor-sel-btn").forEach(b => b.classList.toggle("ss-active", b.dataset.sid === setorSel));
+        const a = getAtivas(setorSel);
+        document.getElementById("setorPanel").innerHTML = buildPanel(setorSel, a);
         rebindPanel(a);
       });
     });
   }
 
-  document.getElementById("aMain").innerHTML=`<div class="adm-wrap">
+  document.getElementById("aMain").innerHTML = `<div class="adm-wrap">
     <div class="ed-header">
       <div>
         <h2 class="sec-t" style="margin:0">🎯 Alíneas por Setor</h2>
@@ -946,15 +1283,16 @@ function renderEditorSetores() {
       <button class="btn-ed-save" id="btnSalvarSetor">💾 Salvar Configuração</button>
     </div>
     <div class="setor-sel-row" id="setorBtns">${buildSetorBtns()}</div>
-    <div class="setor-config-panel" id="setorPanel">${buildPanel(setorSel,getAtivas(setorSel))}</div>
+    <div class="setor-config-panel" id="setorPanel">${buildPanel(setorSel, getAtivas(setorSel))}</div>
   </div>`;
 
   rebindPanel(getAtivas(setorSel));
   bindSetorBtns();
 }
 
+// ─── Detalhe Setor (Admin) ────────────────────────────────────────
 function renderDetalheSetor(s) {
-  document.getElementById("aMain").innerHTML=`<div class="adm-wrap">
+  document.getElementById("aMain").innerHTML = `<div class="adm-wrap">
     <button class="btn-back" id="btnBack">← Voltar ao Painel</button>
     <div class="det-hd">
       <div class="det-sig">${s.sigla}</div>
@@ -962,30 +1300,34 @@ function renderDetalheSetor(s) {
         <h1 class="det-nome">${s.nome}</h1>
         <p class="det-sub">IMO: <strong style="color:${imoColor(s.imo)}">${s.imo}%</strong> ·
           ${s.respondidas}/${getTotalAlineasParaSetor(s.id)} alíneas ·
-          <span class="${stCls(s.status)}">${stLbl(s.status)}</span></p>
+          <span class="${stCls(s.status)}">${stLbl(s.status)}</span> ·
+          <span class="tb-ano-chip">📅 ${anoSelecionado}</span></p>
       </div>
     </div>
     <div class="charts-row" style="grid-template-columns:1.5fr 1fr">
       <div class="cc"><div class="cc-h">Desempenho por Dimensão (%)</div><canvas id="dBar"></canvas></div>
       <div class="cc"><div class="cc-h">Radar IMGG</div><canvas id="dRadar"></canvas></div>
     </div>
-    ${DIMENSOES.map((dim,di)=>{
-      const med=s.dimScores[di]??0;
+    ${DIMENSOES.map((dim, di) => {
+      const med = s.dimScores[di] ?? 0;
       return `<div class="dim-det-card">
         <div class="ddc-hdr">
           <span>${dim.icone}</span><span class="ddc-t">${dim.titulo}</span>
           <span class="ddc-m" style="color:${imoColor(med)}">${med}%</span>
         </div>
         <table class="rt">
-          <thead><tr><th>Alínea</th><th>Nota</th><th>Nível</th><th>Evidência / Observação</th></tr></thead>
+          <thead><tr><th>Alínea</th><th>Continuidade</th><th>Adequação</th><th>Observação</th><th>Anexos</th></tr></thead>
           <tbody>
-            ${dim.alineas.map(al=>{
-              const r=s.resp[al.id],op=r?ESCALA.find(e=>e.valor===r.valor):null;
+            ${dim.alineas.map(al => {
+              const r = s.resp[al.id] || {};
               return `<tr>
                 <td class="rt-t">${al.texto}</td>
-                <td class="rt-n">${op?`<span class="nota-b" style="background:${op.cor}">${op.valor}</span>`:"—"}</td>
-                <td>${op?`<span style="color:${op.cor};font-weight:600;font-size:12px">${op.label}</span>`:'<span class="nr">Não resp.</span>'}</td>
-                <td class="rt-o">${r?.obs ? `<span class="obs-text">${r.obs}</span>` : "—"}</td>
+                <td class="rt-sn">${snBadge(r.continuidade)}</td>
+                <td class="rt-sn">${snBadge(r.adequacao)}</td>
+                <td class="rt-o">${r.obs ? `<span class="obs-text">${r.obs}</span>` : "—"}</td>
+                <td class="rt-anx">${(r.anexos||[]).length > 0
+                  ? (r.anexos||[]).map(a=>`<a href="${a.base64}" download="${a.nome}" class="anexo-link-adm">${anexoIco(a.tipo)} ${a.nome}</a>`).join("")
+                  : "—"}</td>
               </tr>`;
             }).join("")}
           </tbody>
@@ -994,49 +1336,51 @@ function renderDetalheSetor(s) {
     }).join("")}
   </div>`;
 
-  document.getElementById("btnBack").addEventListener("click",async()=>{ renderAdminShell(); await renderAdminContent(); });
-  requestAnimationFrame(()=>{
+  document.getElementById("btnBack").addEventListener("click", async () => { renderAdminShell(); await renderAdminContent(); });
+  requestAnimationFrame(() => {
     destroyCharts();
-    const dp=s.dimScores;
-    const labels=DIMENSOES.map(d=>d.titulo.split(" ").slice(0,2).join(" "));
-    chartInstances.dBar=new Chart(document.getElementById("dBar"),{
-      type:"bar",data:{labels,datasets:[{label:"(%)",data:dp,backgroundColor:dp.map(v=>imoColorA(v,.75)),borderColor:dp.map(v=>imoColor(v)),borderWidth:2,borderRadius:8}]},
-      options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+"%"}}}}
+    const dp     = s.dimScores;
+    const labels = DIMENSOES.map(d => d.titulo.split(" ").slice(0,2).join(" "));
+    chartInstances.dBar = new Chart(document.getElementById("dBar"), {
+      type:"bar", data:{ labels, datasets:[{ label:"(%)", data:dp, backgroundColor:dp.map(v=>imoColorA(v,.75)), borderColor:dp.map(v=>imoColor(v)), borderWidth:2, borderRadius:8 }] },
+      options:{ responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+"%"}}} }
     });
-    chartInstances.dRadar=new Chart(document.getElementById("dRadar"),{
-      type:"radar",data:{labels,datasets:[{label:s.sigla,data:dp,backgroundColor:"rgba(6,182,212,.12)",borderColor:"#06b6d4",borderWidth:2,pointBackgroundColor:"#06b6d4",pointRadius:4}]},
-      options:{responsive:true,scales:{r:{beginAtZero:true,max:100,ticks:{display:false}}},plugins:{legend:{display:false}}}
+    chartInstances.dRadar = new Chart(document.getElementById("dRadar"), {
+      type:"radar", data:{ labels, datasets:[{ label:s.sigla, data:dp, backgroundColor:"rgba(6,182,212,.12)", borderColor:"#06b6d4", borderWidth:2, pointBackgroundColor:"#06b6d4", pointRadius:4 }] },
+      options:{ responsive:true, scales:{r:{beginAtZero:true,max:100,ticks:{display:false}}}, plugins:{legend:{display:false}} }
     });
   });
 }
 
+// ─── Charts ───────────────────────────────────────────────────────
 function renderChartBar(data) {
-  chartInstances.bar=new Chart(document.getElementById("cBar"),{
-    type:"bar",data:{labels:data.map(s=>s.sigla),datasets:[{label:"IMO (%)",data:data.map(s=>s.imo),backgroundColor:data.map(s=>imoColorA(s.imo,.75)),borderColor:data.map(s=>imoColor(s.imo)),borderWidth:2,borderRadius:8}]},
-    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+"%"}}}}
+  chartInstances.bar = new Chart(document.getElementById("cBar"), {
+    type:"bar", data:{ labels:data.map(s=>s.sigla), datasets:[{ label:"IMO (%)", data:data.map(s=>s.imo), backgroundColor:data.map(s=>imoColorA(s.imo,.75)), borderColor:data.map(s=>imoColor(s.imo)), borderWidth:2, borderRadius:8 }] },
+    options:{ responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+"%"}}} }
   });
 }
 function renderChartRadar(data) {
-  const dm=DIMENSOES.map((_,di)=>parseFloat((data.reduce((a,s)=>a+(s.dimScores[di]??0),0)/data.length).toFixed(1)));
-  chartInstances.radar=new Chart(document.getElementById("cRadar"),{
-    type:"radar",data:{labels:DIMENSOES.map(d=>d.titulo.split(" ").slice(0,2).join(" ")),datasets:[{label:"Média",data:dm,backgroundColor:"rgba(6,182,212,.12)",borderColor:"#06b6d4",borderWidth:2,pointBackgroundColor:"#06b6d4",pointRadius:4}]},
-    options:{responsive:true,scales:{r:{beginAtZero:true,max:100,ticks:{display:false}}},plugins:{legend:{display:false}}}
+  const dm = DIMENSOES.map((_,di) => parseFloat((data.reduce((a,s) => a+(s.dimScores[di]??0), 0) / data.length).toFixed(1)));
+  chartInstances.radar = new Chart(document.getElementById("cRadar"), {
+    type:"radar", data:{ labels:DIMENSOES.map(d=>d.titulo.split(" ").slice(0,2).join(" ")), datasets:[{ label:"Média", data:dm, backgroundColor:"rgba(6,182,212,.12)", borderColor:"#06b6d4", borderWidth:2, pointBackgroundColor:"#06b6d4", pointRadius:4 }] },
+    options:{ responsive:true, scales:{r:{beginAtZero:true,max:100,ticks:{display:false}}}, plugins:{legend:{display:false}} }
   });
 }
-function renderChartDonut(enviados,emAnd,naoIn) {
-  chartInstances.donut=new Chart(document.getElementById("cDonut"),{
-    type:"doughnut",data:{labels:["Enviado","Em Andamento","Não Iniciado"],datasets:[{data:[enviados,emAnd,naoIn],backgroundColor:["#22c55e","#eab308","#ef4444"],borderWidth:3,borderColor:"#fff"}]},
-    options:{responsive:true,cutout:"62%",plugins:{legend:{position:"bottom",labels:{boxWidth:12,font:{size:11},padding:12}}}}
+function renderChartDonut(enviados, emAnd, naoIn) {
+  chartInstances.donut = new Chart(document.getElementById("cDonut"), {
+    type:"doughnut", data:{ labels:["Enviado","Em Andamento","Não Iniciado"], datasets:[{ data:[enviados,emAnd,naoIn], backgroundColor:["#22c55e","#eab308","#ef4444"], borderWidth:3, borderColor:"#fff" }] },
+    options:{ responsive:true, cutout:"62%", plugins:{ legend:{ position:"bottom", labels:{ boxWidth:12, font:{size:11}, padding:12 } } } }
   });
 }
 function destroyCharts() {
-  Object.values(chartInstances).forEach(c=>{try{c.destroy();}catch(e){}});
-  chartInstances={};
+  Object.values(chartInstances).forEach(c => { try { c.destroy(); } catch(e) {} });
+  chartInstances = {};
 }
 
+// ─── Card / List helpers ──────────────────────────────────────────
 function setorCardHtml(s) {
-  const total=getTotalAlineasParaSetor(s.id);
-  const pct=total>0?Math.round((s.respondidas/total)*100):0;
+  const total = getTotalAlineasParaSetor(s.id);
+  const pct   = total > 0 ? Math.round((s.respondidas / total) * 100) : 0;
   return `<div class="setor-card" data-id="${s.id}" data-n="${s.nome}">
     <div class="sc-top"><span class="sc-sig">${s.sigla}</span><span class="${stCls(s.status)}">${stLbl(s.status)}</span></div>
     <div class="sc-nome">${s.nome}</div>
@@ -1059,19 +1403,22 @@ function listItemHtml(s) {
       <span class="${stCls(s.status)}">${stLbl(s.status)}</span>
     </summary>
     <div class="ls-body">
-      ${DIMENSOES.map(dim=>`
+      ${DIMENSOES.map(dim => `
         <div class="ls-dim">
           <div class="ls-dh">${dim.icone} ${dim.titulo}</div>
           <table class="rt">
-            <thead><tr><th>Alínea</th><th>Nota</th><th>Nível</th><th>Evidência / Observação</th></tr></thead>
+            <thead><tr><th>Alínea</th><th>Continuidade</th><th>Adequação</th><th>Observação</th><th>Anexos</th></tr></thead>
             <tbody>
-              ${dim.alineas.map(al=>{
-                const r=s.resp[al.id],op=r?ESCALA.find(e=>e.valor===r.valor):null;
+              ${dim.alineas.map(al => {
+                const r = s.resp[al.id] || {};
                 return `<tr>
                   <td class="rt-t">${al.texto}</td>
-                  <td class="rt-n">${op?`<span class="nota-b" style="background:${op.cor}">${op.valor}</span>`:"—"}</td>
-                  <td>${op?`<span style="color:${op.cor};font-weight:600;font-size:12px">${op.label}</span>`:'<span class="nr">—</span>'}</td>
-                  <td class="rt-o">${r?.obs ? `<span class="obs-text">${r.obs}</span>` : "—"}</td>
+                  <td class="rt-sn">${snBadge(r.continuidade)}</td>
+                  <td class="rt-sn">${snBadge(r.adequacao)}</td>
+                  <td class="rt-o">${r.obs ? `<span class="obs-text">${r.obs}</span>` : "—"}</td>
+                  <td class="rt-anx">${(r.anexos||[]).length > 0
+                    ? (r.anexos||[]).map(a=>`<a href="${a.base64}" download="${a.nome}" class="anexo-link-adm">${anexoIco(a.tipo)} ${a.nome}</a>`).join("")
+                    : "—"}</td>
                 </tr>`;
               }).join("")}
             </tbody>
@@ -1081,53 +1428,86 @@ function listItemHtml(s) {
   </details>`;
 }
 
+// ─── buildSetoresData ─────────────────────────────────────────────
 function buildSetoresData(all) {
-  return SETORES.map(s=>{
-    const d=all[s.id]||{}, resp=d.respostas||{};
-    const respondidas=Object.values(resp).filter(r=>r.valor!==null&&r.valor!==undefined).length;
-    const pts=Object.values(resp).reduce((a,r)=>a+(r.valor||0),0);
-    const imo=respondidas>0?parseFloat(((pts/(respondidas*5))*100).toFixed(1)):0;
-    const status=d.status||"nao_iniciado";
-    const dimScores=DIMENSOES.map(dim=>{
-      const sum=dim.alineas.reduce((a,al)=>a+(resp[al.id]?.valor||0),0);
-      return respondidas>0?parseFloat(((sum/(dim.alineas.length*5))*100).toFixed(1)):0;
+  return SETORES.map(s => {
+    const d    = all[s.id] || {}, resp = d.respostas || {};
+    const respondidas = Object.values(resp).filter(r => isRespondida(r)).length;
+    const total = getTotalAlineasParaSetor(s.id);
+    const imo   = calcIMO(resp, total);
+    const status = d.status || "nao_iniciado";
+    const dimScores = DIMENSOES.map(dim => {
+      const maxPts = dim.alineas.length * 2;
+      if (maxPts === 0) return 0;
+      let pts = 0;
+      dim.alineas.forEach(al => {
+        const r = resp[al.id];
+        if (r?.continuidade === "sim") pts++;
+        if (r?.adequacao    === "sim") pts++;
+      });
+      return parseFloat(((pts / maxPts) * 100).toFixed(1));
     });
-    return {...s,resp,respondidas,pts,imo,status,dimScores};
+    return { ...s, resp, respondidas, imo, status, dimScores };
   });
 }
 
+// ─── Export ───────────────────────────────────────────────────────
 function exportXLS(data) {
-  let csv="Setor;Sigla;Status;IMO (%)";
-  DIMENSOES.forEach(dim=>dim.alineas.forEach(al=>{ csv+=`;${al.id};${al.id}_obs`; }));
-  csv+="\n";
-  data.forEach(s=>{
-    csv+=`"${s.nome}";${s.sigla};"${stLbl(s.status)}";${s.imo}`;
-    DIMENSOES.forEach(dim=>dim.alineas.forEach(al=>{
-      const r=s.resp[al.id];
-      csv+=`;${r?.valor||""};"${(r?.obs||"").replace(/"/g,"'")}"`;
+  let csv = `Ano;Setor;Sigla;Status;IMO (%)`;
+  DIMENSOES.forEach(dim => dim.alineas.forEach(al => { csv += `;${al.id}_cont;${al.id}_adeq;${al.id}_obs`; }));
+  csv += "\n";
+  data.forEach(s => {
+    csv += `${anoSelecionado};"${s.nome}";${s.sigla};"${stLbl(s.status)}";${s.imo}`;
+    DIMENSOES.forEach(dim => dim.alineas.forEach(al => {
+      const r = s.resp[al.id] || {};
+      csv += `;${r.continuidade||""};${r.adequacao||""};\"${(r.obs||"").replace(/"/g,"'")}\"`;
     }));
-    csv+="\n";
+    csv += "\n";
   });
-  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
-  a.download="IMGG_SESAU_AL_"+new Date().toISOString().slice(0,10)+".csv"; a.click();
+  const blob = new Blob(["\uFEFF"+csv], { type:"text/csv;charset=utf-8;" });
+  const a    = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = `IMGG_SESAU_AL_${anoSelecionado}_${new Date().toISOString().slice(0,10)}.csv`; a.click();
   toast("Arquivo CSV/Excel exportado! ✅","success");
 }
 
 function exportPDF(data) {
-  const w=window.open("","_blank");
-  const linhas=data.map(s=>`<tr><td>${s.nome}</td><td>${s.sigla}</td><td>${s.respondidas}/${getTotalAlineasParaSetor(s.id)}</td><td class="nota">${s.imo}%</td><td><span class="badge ${s.status==="enviado"?"env":["em_andamento","concluido"].includes(s.status)?"and":"nao"}">${stLbl(s.status)}</span></td></tr>`).join("");
-  const det=data.filter(s=>s.respondidas>0).map(s=>`<h2>${s.sigla} — ${s.nome} | IMO: ${s.imo}%</h2>${DIMENSOES.map(dim=>`<h3>${dim.icone} ${dim.titulo}</h3><table><thead><tr><th style="width:40%">Alínea</th><th>Nota</th><th>Nível</th><th>Evidência / Observação</th></tr></thead><tbody>${dim.alineas.map(al=>{const r=s.resp[al.id],op=r?ESCALA.find(e=>e.valor===r.valor):null;return`<tr><td>${al.texto}</td><td style="text-align:center;font-weight:700">${r?.valor||"—"}</td><td>${op?op.label:"Não respondida"}</td><td>${r?.obs||"—"}</td></tr>`;}).join("")}</tbody></table>`).join("")}`).join("");
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>IMGG SESAU-AL</title><style>body{font-family:Arial,sans-serif;font-size:11px;color:#1a202c;padding:20px}h1{color:#003d7a;font-size:18px}h2{color:#003d7a;font-size:13px;margin:24px 0 6px;border-bottom:2px solid #003d7a;padding-bottom:4px}h3{font-size:11px;color:#374151;margin:14px 0 4px;padding:4px 8px;background:#f8fafc}table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:10px}th{background:#003d7a;color:white;padding:5px 8px;text-align:left}td{padding:5px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top}tr:nth-child(even) td{background:#f8fafc}.nota{font-weight:700;font-size:12px}.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700}.env{background:#d1fae5;color:#065f46}.and{background:#fef3c7;color:#92400e}.nao{background:#fee2e2;color:#991b1b}@page{margin:1.5cm}</style></head><body><h1>IMGG — Instrumento de Maturidade, Governança e Gestão</h1><p>SESAU · Alagoas · Gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")}</p><h2>Resumo Geral por Setor</h2><table><thead><tr><th>Setor</th><th>Sigla</th><th>Respondidas</th><th>IMO (%)</th><th>Status</th></tr></thead><tbody>${linhas}</tbody></table>${det}</body></html>`);
-  w.document.close(); setTimeout(()=>w.print(),700);
+  const w = window.open("","_blank");
+  const linhas = data.map(s => `<tr><td>${s.nome}</td><td>${s.sigla}</td><td>${s.respondidas}/${getTotalAlineasParaSetor(s.id)}</td><td class="nota">${s.imo}%</td><td><span class="badge ${s.status==="enviado"?"env":["em_andamento","concluido"].includes(s.status)?"and":"nao"}">${stLbl(s.status)}</span></td></tr>`).join("");
+  const det = data.filter(s => s.respondidas > 0).map(s => `
+    <h2>${s.sigla} — ${s.nome} | IMO: ${s.imo}% | ${anoSelecionado}</h2>
+    ${DIMENSOES.map(dim => `
+      <h3>${dim.icone} ${dim.titulo}</h3>
+      <table>
+        <thead><tr><th style="width:38%">Alínea</th><th>Continuidade</th><th>Adequação</th><th>Observação</th></tr></thead>
+        <tbody>
+          ${dim.alineas.map(al => {
+            const r = s.resp[al.id] || {};
+            return `<tr>
+              <td>${al.texto}</td>
+              <td style="text-align:center;font-weight:700;color:${r.continuidade==="sim"?"#16a34a":r.continuidade==="nao"?"#dc2626":"#6b7280"}">${r.continuidade==="sim"?"✔ Sim":r.continuidade==="nao"?"✘ Não":"—"}</td>
+              <td style="text-align:center;font-weight:700;color:${r.adequacao==="sim"?"#16a34a":r.adequacao==="nao"?"#dc2626":"#6b7280"}">${r.adequacao==="sim"?"✔ Sim":r.adequacao==="nao"?"✘ Não":"—"}</td>
+              <td>${r.obs||"—"}</td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>`).join("")}`).join("");
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>IMGG SESAU-AL ${anoSelecionado}</title><style>body{font-family:Arial,sans-serif;font-size:11px;color:#1a202c;padding:20px}h1{color:#003d7a;font-size:18px}h2{color:#003d7a;font-size:13px;margin:24px 0 6px;border-bottom:2px solid #003d7a;padding-bottom:4px}h3{font-size:11px;color:#374151;margin:14px 0 4px;padding:4px 8px;background:#f8fafc}table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:10px}th{background:#003d7a;color:white;padding:5px 8px;text-align:left}td{padding:5px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top}tr:nth-child(even) td{background:#f8fafc}.nota{font-weight:700;font-size:12px}.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700}.env{background:#d1fae5;color:#065f46}.and{background:#fef3c7;color:#92400e}.nao{background:#fee2e2;color:#991b1b}@page{margin:1.5cm}</style></head><body><h1>IMGG — Instrumento de Maturidade, Governança e Gestão</h1><p>SESAU · Alagoas · Ano: <strong>${anoSelecionado}</strong> · Gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")}</p><h2>Resumo Geral — ${anoSelecionado}</h2><table><thead><tr><th>Setor</th><th>Sigla</th><th>Respondidas</th><th>IMO (%)</th><th>Status</th></tr></thead><tbody>${linhas}</tbody></table>${det}</body></html>`);
+  w.document.close(); setTimeout(() => w.print(), 700);
   toast("Janela de impressão/PDF aberta! 🖨","success");
 }
 
-function imoColor(p){ if(p>=80)return"#06b6d4";if(p>=60)return"#22c55e";if(p>=40)return"#eab308";if(p>=20)return"#f97316";return"#ef4444"; }
-function imoColorA(p,a){ const c=imoColor(p),r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16);return`rgba(${r},${g},${b},${a})`; }
-function imoNivel(p){ if(p>=80)return"Nível Otimizado — Excelência comprovada";if(p>=60)return"Nível Gerenciado — Bem implementado";if(p>=40)return"Nível em Desenvolvimento — Em estruturação";if(p>=20)return"Nível Inicial — Esforços pontuais";return"Nível Inexistente — Sem implementação"; }
-function stCls(s){ if(s==="enviado")return"b-green";if(["em_andamento","concluido"].includes(s))return"b-yellow";return"b-red"; }
-function stLbl(s){ return{enviado:"Enviado",em_andamento:"Em Andamento",concluido:"Concluído",nao_iniciado:"Não Iniciado"}[s]||"Não Iniciado"; }
-function toast(msg,type="info"){ let t=document.getElementById("toast");if(!t){t=document.createElement("div");t.id="toast";document.body.appendChild(t);}t.textContent=msg;t.className=`toast t-${type} show`;clearTimeout(window._tt);window._tt=setTimeout(()=>t.className="toast",3500); }
+// ─── Utils ────────────────────────────────────────────────────────
+function snBadge(val) {
+  if (val === "sim") return `<span class="sn-badge sn-badge-sim">✔ Sim</span>`;
+  if (val === "nao") return `<span class="sn-badge sn-badge-nao">✘ Não</span>`;
+  return `<span class="sn-badge sn-badge-nd">—</span>`;
+}
 
-document.addEventListener("DOMContentLoaded",()=>renderLogin());
+function imoColor(p)  { if(p>=80)return"#06b6d4";if(p>=60)return"#22c55e";if(p>=40)return"#eab308";if(p>=20)return"#f97316";return"#ef4444"; }
+function imoColorA(p,a){ const c=imoColor(p),r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16);return`rgba(${r},${g},${b},${a})`; }
+function imoNivel(p)  { if(p>=80)return"Nível Otimizado — Excelência comprovada";if(p>=60)return"Nível Gerenciado — Bem implementado";if(p>=40)return"Nível em Desenvolvimento — Em estruturação";if(p>=20)return"Nível Inicial — Esforços pontuais";return"Nível Inexistente — Sem implementação"; }
+function stCls(s)     { if(s==="enviado")return"b-green";if(["em_andamento","concluido"].includes(s))return"b-yellow";return"b-red"; }
+function stLbl(s)     { return{enviado:"Enviado",em_andamento:"Em Andamento",concluido:"Concluído",nao_iniciado:"Não Iniciado"}[s]||"Não Iniciado"; }
+function toast(msg, type="info") { let t=document.getElementById("toast");if(!t){t=document.createElement("div");t.id="toast";document.body.appendChild(t);}t.textContent=msg;t.className=`toast t-${type} show`;clearTimeout(window._tt);window._tt=setTimeout(()=>t.className="toast",3500); }
+
+document.addEventListener("DOMContentLoaded", () => renderLogin());

@@ -238,31 +238,6 @@ body {
 .fh-title { font-size: 22px; font-weight: 800; color: var(--ac); margin-bottom: 8px; letter-spacing: -.5px; }
 .fh-desc  { font-size: 13px; color: var(--mu); line-height: 1.6; margin-bottom: 20px; }
 
-.esc-legend { display: flex; flex-direction: column; gap: 8px; }
-.eld {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  background: #f8fafc;
-  border-radius: 8px;
-  border: 1px solid var(--bdr);
-}
-.eld-dot {
-  width: 26px; height: 26px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 12px;
-  font-weight: 800;
-  font-family: 'JetBrains Mono', monospace;
-  flex-shrink: 0;
-}
-.eld-lbl  { display: block; font-size: 12px; font-weight: 700; color: var(--tx); }
-.eld-desc { display: block; font-size: 11px; color: var(--mu); }
-
 /* dimensão */
 .dim-bloco {
   background: white;
@@ -327,27 +302,6 @@ body {
 .al-body { flex: 1; }
 .al-txt  { font-size: 13px; color: var(--tx); line-height: 1.55; margin-bottom: 12px; }
 
-/* botões de escala */
-.al-esc { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
-.eb {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 90px;
-  padding: 9px 4px;
-  border: 2px solid var(--bdr);
-  border-radius: 10px;
-  background: white;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all .15s;
-  color: var(--mu);
-}
-.eb:hover { border-color: #94a3b8; color: var(--tx); transform: translateY(-2px); }
-.eb-sel   { box-shadow: 0 4px 14px rgba(0,0,0,.18); transform: translateY(-2px); }
-.eb-n { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 800; line-height: 1; }
-.eb-l { font-size: 9px; font-weight: 700; text-align: center; margin-top: 3px; line-height: 1.2; text-transform: uppercase; letter-spacing: .3px; }
 
 .al-obs {
   width: 100%;
@@ -520,7 +474,6 @@ body {
 .rt-t { font-size: 12px; line-height: 1.5; color: var(--tx); max-width: 380px; }
 .rt-n { text-align: center; }
 .rt-o { font-size: 11px; color: var(--mu); font-style: italic; }
-.nota-b { display: inline-block; color: white; padding: 2px 10px; border-radius: 12px; font-weight: 800; font-size: 12px; }
 .nr     { color: #94a3b8; }
 
 /* ─── DETALHE SETOR (admin) ────────────────────────────────── */
@@ -600,94 +553,437 @@ body {
   .charts-row .cc:last-child { grid-column: span 1; }
   .tb-chip    { display: none; }
   .btn-exp    { display: none; }
-  .al-esc     { gap: 5px; }
-  .eb         { width: 72px; }
   .da-nome    { width: 130px; font-size: 11px; }
   .kpi-row    { grid-template-columns: 1fr 1fr; }
   .login-card { padding: 32px 24px; }
   .topbar     { padding: 0 16px; }
 }
 
-/* ── LEGENDA FIXA LATERAL ────────────────────────────────────── */
-.esc-legend {
-  position: fixed;
-  left: 0;
-  top: 0;
-  height: 100vh;
-  width: 260px;
+
+
+/* ═══════════════════════════════════════════════════════════════
+   IMGG v5.0 — Sim/Não · Anexos · Badges admin
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Campos Continuidade / Adequação ───────────────────────────── */
+.al-campo {
   display: flex;
   align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 200;
-  padding: 0 12px;
-  box-sizing: border-box;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 
-.esc-legend > * {
-  pointer-events: all;
+.al-campo-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--mu);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  min-width: 110px;
 }
 
-/* Card interno */
-.esc-legend .eld {
+/* ── Grupo Sim/Não ──────────────────────────────────────────────── */
+.sn-group {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
+}
+
+.sn-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 18px;
+  border-radius: 8px;
+  border: 2px solid var(--bdr);
+  background: var(--sur);
+  color: var(--tx);
+  font-family: 'Sora', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.sn-btn:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.sn-btn.sn-sim {
+  background: #dcfce7;
+  border-color: #16a34a;
+  color: #15803d;
+}
+
+.sn-btn.sn-nao {
+  background: #fee2e2;
+  border-color: #dc2626;
+  color: #b91c1c;
+}
+
+/* ── Badges Sim/Não nas tabelas admin ───────────────────────────── */
+.sn-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sn-badge-sim { background: #dcfce7; color: #15803d; }
+.sn-badge-nao { background: #fee2e2; color: #b91c1c; }
+.sn-badge-nd  { background: #f1f5f9; color: #94a3b8; }
+
+.rt-sn {
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* ── Área de Anexos ─────────────────────────────────────────────── */
+.al-anexo-wrap {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px dashed var(--bdr);
+  border-radius: 10px;
+}
+
+.anexo-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--mu);
   margin-bottom: 8px;
 }
-.esc-legend .eld:last-child { margin-bottom: 0; }
 
-.esc-legend .eld-dot {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
+.anexos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  min-height: 20px;
+}
+
+.anexo-empty {
+  font-size: 12px;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.anexo-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--sur);
+  border: 1px solid var(--bdr);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.anexo-ico { font-size: 16px; line-height: 1; }
+
+.anexo-nome {
+  flex: 1;
+  color: var(--ac2);
+  text-decoration: none;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.anexo-nome:hover { text-decoration: underline; }
+
+.anexo-rm {
+  background: none;
+  border: none;
+  color: var(--re);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 4px;
+  opacity: .6;
+  transition: opacity .15s;
+}
+.anexo-rm:hover { opacity: 1; }
+
+.btn-anexo-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 2px dashed #cbd5e1;
+  background: var(--sur);
+  color: var(--mu);
+  font-family: 'Sora', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-anexo-add:hover {
+  border-color: var(--ac2);
+  color: var(--ac2);
+  background: #eff6ff;
+}
+
+.anexo-hint {
+  display: block;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 6px;
+}
+
+/* ── Links de anexo no painel admin ─────────────────────────────── */
+.rt-anx { vertical-align: top; max-width: 160px; }
+
+.anexo-link-adm {
+  display: inline-block;
+  font-size: 11px;
+  color: var(--ac2);
+  text-decoration: none;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+.anexo-link-adm:hover { text-decoration: underline; }
+
+/* ── Responsivo mobile — Sim/Não ────────────────────────────────── */
+@media (max-width: 640px) {
+  .al-campo { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .al-campo-label { min-width: unset; }
+  .sn-btn { padding: 6px 14px; font-size: 12px; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   IMGG v6.0 — Seletor de Ano · Banner Leitura · Gerenciar Anos
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Seletor de ano no topbar ───────────────────────────────────── */
+.ano-selector-topbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ano-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.ano-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mu);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  white-space: nowrap;
+}
+
+.ano-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ano-btn {
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 2px solid var(--bdr);
+  background: var(--sur);
+  font-family: 'Sora', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mu);
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+
+.ano-btn:hover {
+  border-color: var(--ac2);
+  color: var(--ac2);
+  background: #eff6ff;
+}
+
+.ano-btn.ano-ativo {
+  background: var(--ac);
+  border-color: var(--ac);
+  color: #fff;
+}
+
+.ano-btn.ano-encerrado {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.ano-btn.ano-encerrado.ano-ativo {
+  background: #475569;
+  border-color: #475569;
+  color: #fff;
+}
+
+/* Chip simples de ano (quando há apenas 1 ano ativo) */
+.tb-ano-chip {
+  font-size: 11px;
+  font-weight: 700;
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 4px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+/* ── Banner somente leitura ─────────────────────────────────────── */
+.ano-readonly-banner {
+  background: #fef3c7;
+  border-bottom: 2px solid #fbbf24;
+  color: #92400e;
+  text-align: center;
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ── Aba Gerenciar Anos ─────────────────────────────────────────── */
+.anos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 32px;
+}
+
+.ano-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #fff;
+  border: 2px solid var(--bdr);
+  border-radius: 14px;
+  padding: 16px 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  transition: box-shadow .2s;
+}
+
+.ano-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+.ano-card-ativo { border-left: 5px solid #22c55e; }
+.ano-card-enc   { border-left: 5px solid #94a3b8; }
+
+.ano-card-l {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ano-card-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--ac);
+}
+
+.ano-card-st {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.acs-ativo { background: #d1fae5; color: #065f46; }
+.acs-enc   { background: #f1f5f9; color: #64748b; }
+
+.ano-card-r {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-ano-enc {
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 2px solid #fbbf24;
+  background: #fef3c7;
+  color: #92400e;
+  font-family: 'Sora', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+}
+.btn-ano-enc:hover { background: #fde68a; border-color: #f59e0b; }
+
+.btn-ano-reab {
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 2px solid #6ee7b7;
+  background: #d1fae5;
+  color: #065f46;
+  font-family: 'Sora', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+}
+.btn-ano-reab:hover { background: #a7f3d0; }
+
+.btn-ano-del {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 2px solid #fca5a5;
+  background: #fff;
+  color: #ef4444;
+  font-size: 15px;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
-  font-weight: 800;
-  color: #fff;
-  flex-shrink: 0;
+  transition: all .2s;
+}
+.btn-ano-del:hover { background: #fee2e2; border-color: #ef4444; }
+
+/* Adicionar novo ano */
+.ano-novo-wrap {
+  background: #fff;
+  border: 2px dashed var(--bdr);
+  border-radius: 14px;
+  padding: 20px 24px;
 }
 
-.esc-legend .eld-lbl  { display: block; font-size: 13px; font-weight: 700; color: #1e293b; }
-.esc-legend .eld-desc { display: block; font-size: 11px; color: #64748b; line-height: 1.3; }
-
-/* Empurra o formulário para não sobrepor */
-.form-wrap { margin-left: 272px; }
-
-/* ── TABLET (largura média) ──────────────────────────────────── */
-@media (max-width: 1100px) {
-  .esc-legend {
-    position: static;
-    height: auto;
-    width: 100%;
-    padding: 0;
-    margin-bottom: 20px;
-    display: block;
-  }
-
-  /* Grid horizontal em tablets */
-  .esc-legend-inner {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 8px;
-  }
-
-  .esc-legend .eld { margin-bottom: 0; }
-
-  .form-wrap { margin-left: 0; }
+.ano-novo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-/* ── MOBILE ──────────────────────────────────────────────────── */
-@media (max-width: 600px) {
-  .esc-legend-inner {
-    grid-template-columns: 1fr 1fr;
-  }
+.ano-inp {
+  width: 120px;
+  padding: 10px 14px;
+  border: 2px solid var(--bdr);
+  border-radius: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ac);
+  text-align: center;
+  transition: border-color .2s;
 }
+.ano-inp:focus { outline: none; border-color: var(--ac); }
 
-@media (max-width: 380px) {
-  .esc-legend-inner {
-    grid-template-columns: 1fr;
-  }
+/* ── Responsivo ─────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .ano-card { flex-direction: column; align-items: flex-start; }
+  .ano-card-r { width: 100%; }
+  .ano-selector-topbar { display: none; } /* Em mobile, o seletor vai pro banner */
 }
