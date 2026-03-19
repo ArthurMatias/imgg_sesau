@@ -295,7 +295,7 @@ function renderLogin() {
       <div class="orb orb1"></div><div class="orb orb2"></div>
       <div class="login-card">
         <div class="login-brand">
-          <div class="brand-seal">AL</div>
+          <img src="governo-de-alagoas-sem-fundo.png" alt="Governo de Alagoas" class="brand-logo"/>
           <div class="brand-text">
             <span class="brand-org">Secretaria de Estado da Saúde · Alagoas</span>
             <span class="brand-name">IMGG</span>
@@ -368,7 +368,7 @@ function renderSetorShell(setor, isAdminToggled = false) {
     <div class="shell">
       <header class="topbar">
         <div class="topbar-l">
-          <div class="tb-seal">AL</div>
+          <img src="governo-de-alagoas-sem-fundo.png" alt="Governo de Alagoas" class="tb-logo"/>
           <div><span class="tb-sys">IMGG · SESAU Alagoas</span>
           <span class="tb-sub">Instrumento de Maturidade, Governança e Gestão</span></div>
         </div>
@@ -617,7 +617,7 @@ function renderAdminShell() {
     <div class="shell">
       <header class="topbar">
         <div class="topbar-l">
-          <div class="tb-seal">AL</div>
+          <img src="governo-de-alagoas-sem-fundo.png" alt="Governo de Alagoas" class="tb-logo"/>
           <div><span class="tb-sys">IMGG · SESAU Alagoas</span>
           <span class="tb-sub">Painel Administrativo</span></div>
         </div>
