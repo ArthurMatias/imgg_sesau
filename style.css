@@ -975,3 +975,24 @@ body {
   .ano-card-r { width: 100%; }
   .ano-selector-topbar { display: none; } /* Em mobile, o seletor vai pro banner */
 }
+
+
+/* ── Navegação do detalhe de setor (voltar + PDF) ─────────────── */
+.det-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.btn-pdf-setor {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.btn-pdf-setor:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}

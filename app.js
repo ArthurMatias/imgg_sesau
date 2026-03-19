@@ -1293,7 +1293,10 @@ function renderEditorSetores() {
 // ─── Detalhe Setor (Admin) ────────────────────────────────────────
 function renderDetalheSetor(s) {
   document.getElementById("aMain").innerHTML = `<div class="adm-wrap">
-    <button class="btn-back" id="btnBack">← Voltar ao Painel</button>
+    <div class="det-nav">
+      <button class="btn-back" id="btnBack">← Voltar ao Painel</button>
+      <button class="btn-exp btn-pdf-setor" id="btnPdfSetor">🖨 PDF do Setor</button>
+    </div>
     <div class="det-hd">
       <div class="det-sig">${s.sigla}</div>
       <div>
@@ -1337,6 +1340,7 @@ function renderDetalheSetor(s) {
   </div>`;
 
   document.getElementById("btnBack").addEventListener("click", async () => { renderAdminShell(); await renderAdminContent(); });
+  document.getElementById("btnPdfSetor").addEventListener("click", () => exportPDFSetor(s));
   requestAnimationFrame(() => {
     destroyCharts();
     const dp     = s.dimScores;
@@ -1468,6 +1472,112 @@ function exportXLS(data) {
   const a    = document.createElement("a"); a.href = URL.createObjectURL(blob);
   a.download = `IMGG_SESAU_AL_${anoSelecionado}_${new Date().toISOString().slice(0,10)}.csv`; a.click();
   toast("Arquivo CSV/Excel exportado! ✅","success");
+}
+
+function exportPDFSetor(s) {
+  const w      = window.open("", "_blank");
+  const total  = getTotalAlineasParaSetor(s.id);
+  const gerado = `${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")}`;
+
+  // ── Métricas de continuidade e adequação por dimensão
+  const dimRows = DIMENSOES.map((dim, di) => {
+    const maxPts = dim.alineas.length;
+    let contSim=0, adeqSim=0;
+    dim.alineas.forEach(al => {
+      const r = s.resp[al.id] || {};
+      if (r.continuidade === "sim") contSim++;
+      if (r.adequacao    === "sim") adeqSim++;
+    });
+    const pctCont = maxPts > 0 ? Math.round((contSim/maxPts)*100) : 0;
+    const pctAdeq = maxPts > 0 ? Math.round((adeqSim/maxPts)*100) : 0;
+    const med     = s.dimScores[di] ?? 0;
+    const cor     = med >= 80 ? "#06b6d4" : med >= 60 ? "#22c55e" : med >= 40 ? "#eab308" : med >= 20 ? "#f97316" : "#ef4444";
+    return `<tr>
+      <td>${dim.icone} ${dim.titulo}</td>
+      <td style="text-align:center">${contSim}/${maxPts} (${pctCont}%)</td>
+      <td style="text-align:center">${adeqSim}/${maxPts} (${pctAdeq}%)</td>
+      <td style="text-align:center;font-weight:800;color:${cor}">${med}%</td>
+    </tr>`;
+  }).join("");
+
+  // ── Respostas detalhadas por dimensão
+  const detDims = DIMENSOES.map(dim => `
+    <h3>${dim.icone} ${dim.titulo}</h3>
+    <table>
+      <thead><tr><th style="width:40%">Alínea</th><th>Continuidade</th><th>Adequação</th><th>Observação</th></tr></thead>
+      <tbody>
+        ${dim.alineas.map(al => {
+          const r = s.resp[al.id] || {};
+          const corC = r.continuidade==="sim"?"#16a34a":r.continuidade==="nao"?"#dc2626":"#6b7280";
+          const corA = r.adequacao==="sim"?"#16a34a":r.adequacao==="nao"?"#dc2626":"#6b7280";
+          return `<tr>
+            <td>${al.texto}</td>
+            <td style="text-align:center;font-weight:700;color:${corC}">${r.continuidade==="sim"?"✔ Sim":r.continuidade==="nao"?"✘ Não":"—"}</td>
+            <td style="text-align:center;font-weight:700;color:${corA}">${r.adequacao==="sim"?"✔ Sim":r.adequacao==="nao"?"✘ Não":"—"}</td>
+            <td>${r.obs ? `<em>${r.obs}</em>` : "—"}</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>`).join("");
+
+  const imoNv = s.imo >= 80 ? "Otimizado" : s.imo >= 60 ? "Gerenciado" : s.imo >= 40 ? "Em Desenvolvimento" : s.imo >= 20 ? "Inicial" : "Inexistente";
+  const imoC  = s.imo >= 80 ? "#06b6d4"   : s.imo >= 60 ? "#22c55e"    : s.imo >= 40 ? "#eab308"            : s.imo >= 20 ? "#f97316"  : "#ef4444";
+
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>IMGG ${s.sigla} — ${anoSelecionado}</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #1a202c; padding: 24px; }
+    .cover { text-align:center; padding: 40px 0 32px; border-bottom: 3px solid #003d7a; margin-bottom: 28px; }
+    .cover-title { font-size: 22px; font-weight: 800; color: #003d7a; margin-bottom: 4px; }
+    .cover-sub   { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+    .imo-box { display:inline-block; padding: 14px 32px; border-radius: 12px; border: 3px solid ${imoC}; background: #f8fafc; }
+    .imo-val { font-size: 42px; font-weight: 900; color: ${imoC}; line-height:1; }
+    .imo-lbl { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .imo-nv  { font-size: 13px; font-weight: 700; color: ${imoC}; margin-top: 2px; }
+    .info-row { display:flex; justify-content:center; gap: 28px; margin-top: 20px; font-size: 12px; color: #374151; }
+    .info-item span { font-weight: 700; color: #003d7a; }
+    h2 { color: #003d7a; font-size: 14px; margin: 28px 0 8px; border-bottom: 2px solid #003d7a; padding-bottom: 5px; }
+    h3 { font-size: 11px; color: #374151; margin: 16px 0 4px; padding: 4px 10px; background: #f1f5f9; border-left: 3px solid #003d7a; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 10px; }
+    th { background: #003d7a; color: white; padding: 6px 8px; text-align: left; }
+    td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .badge { display:inline-block; padding:2px 9px; border-radius:10px; font-size:9px; font-weight:700; }
+    .env { background:#d1fae5; color:#065f46; }
+    .and { background:#fef3c7; color:#92400e; }
+    .nao { background:#fee2e2; color:#991b1b; }
+    @page { margin: 1.5cm; }
+  </style>
+  </head><body>
+
+  <div class="cover">
+    <div class="cover-title">IMGG — ${s.sigla} · ${s.nome}</div>
+    <div class="cover-sub">Instrumento de Maturidade, Governança e Gestão · SESAU Alagoas · Ano ${anoSelecionado}</div>
+    <div class="imo-box">
+      <div class="imo-val">${s.imo}%</div>
+      <div class="imo-lbl">Índice de Maturidade Organizacional</div>
+      <div class="imo-nv">${imoNv}</div>
+    </div>
+    <div class="info-row">
+      <div class="info-item">Alíneas respondidas: <span>${s.respondidas}/${total}</span></div>
+      <div class="info-item">Status: <span>${stLbl(s.status)}</span></div>
+      <div class="info-item">Gerado em: <span>${gerado}</span></div>
+    </div>
+  </div>
+
+  <h2>Resumo por Dimensão</h2>
+  <table>
+    <thead><tr><th>Dimensão</th><th>Continuidade (Sim)</th><th>Adequação (Sim)</th><th>IMO</th></tr></thead>
+    <tbody>${dimRows}</tbody>
+  </table>
+
+  <h2>Respostas Detalhadas</h2>
+  ${detDims}
+
+  </body></html>`);
+  w.document.close();
+  setTimeout(() => w.print(), 700);
+  toast("PDF do setor gerado! 🖨", "success");
 }
 
 function exportPDF(data) {
