@@ -315,6 +315,24 @@ async function saveAnos() {
   await setDoc(doc(db, "config", "anos"), { anos: anosDisponiveis, updatedAt: serverTimestamp() });
 }
 
+
+// ─── Expande alíneas para lista plana de itens respondíveis ──────
+// Retorna [{id, texto, prefixo}] — usado nas tabelas admin
+function expandirAlineas(dim) {
+  const itens = [];
+  dim.alineas.forEach((al, ai) => {
+    const letraChar = String.fromCharCode(97 + ai);
+    if (temSubitens(al)) {
+      al.subitens.forEach(sub => {
+        itens.push({ id: sub.id, texto: sub.texto, prefixo: `${letraChar}) ${sub.num}` });
+      });
+    } else {
+      itens.push({ id: al.id, texto: al.texto || al.titulo || "", prefixo: String.fromCharCode(65+ai) });
+    }
+  });
+  return itens;
+}
+
 // ─── Dimensões / Config ─────────────────────────────────────────
 function getDimensoesParaSetor(setorId) {
   const cfg = setorConfig[setorId];
@@ -1469,16 +1487,16 @@ function renderMetricasTab(data) {
           <div class="hm-dim">
             <div class="hm-dtit">${dim.icone} ${dim.titulo}</div>
             <div class="hm-alineas">
-              ${dim.alineas.map(al => {
+              ${expandirAlineas(dim).map(item => {
                 let simCount = 0, total2 = data.length * 2;
                 data.forEach(s => {
-                  const r = s.resp[al.id];
+                  const r = s.resp[item.id];
                   if (r?.continuidade === "sim") simCount++;
                   if (r?.adequacao    === "sim") simCount++;
                 });
                 const pct = total2 > 0 ? parseFloat(((simCount/total2)*100).toFixed(1)) : 0;
-                return `<div class="hm-cel" style="background:${imoColorA(pct,.85)}" title="${al.texto} — Sim: ${pct}%">
-                  <div class="hm-code">${al.id}</div><div class="hm-val">${pct}%</div>
+                return `<div class="hm-cel" style="background:${imoColorA(pct,.85)}" title="${item.texto} — Sim: ${pct}%">
+                  <div class="hm-code">${item.prefixo}</div><div class="hm-val">${pct}%</div>
                 </div>`;
               }).join("")}
             </div>
@@ -1925,12 +1943,13 @@ function renderDetalheSetor(s) {
           <span class="ddc-m" style="color:${imoColor(med)}">${med}%</span>
         </div>
         <table class="rt">
-          <thead><tr><th>Alínea</th><th>Continuidade</th><th>Adequação</th><th>Observação</th><th>Anexos</th></tr></thead>
+          <thead><tr><th style="width:32px">#</th><th>Alínea</th><th>Continuidade</th><th>Adequação</th><th>Observação</th><th>Anexos</th></tr></thead>
           <tbody>
-            ${dim.alineas.map(al => {
-              const r = s.resp[al.id] || {};
+            ${expandirAlineas(dim).map(item => {
+              const r = s.resp[item.id] || {};
               return `<tr>
-                <td class="rt-t">${al.texto}</td>
+                <td class="rt-pfx">${item.prefixo}</td>
+                <td class="rt-t">${item.texto}</td>
                 <td class="rt-sn">${snBadge(r.continuidade)}</td>
                 <td class="rt-sn">${snBadge(r.adequacao)}</td>
                 <td class="rt-o">${r.obs ? `<span class="obs-text">${r.obs}</span>` : "—"}</td>
@@ -2017,12 +2036,13 @@ function listItemHtml(s) {
         <div class="ls-dim">
           <div class="ls-dh">${dim.icone} ${dim.titulo}</div>
           <table class="rt">
-            <thead><tr><th>Alínea</th><th>Continuidade</th><th>Adequação</th><th>Observação</th><th>Anexos</th></tr></thead>
+            <thead><tr><th style="width:32px">#</th><th>Alínea</th><th>Continuidade</th><th>Adequação</th><th>Observação</th><th>Anexos</th></tr></thead>
             <tbody>
-              ${dim.alineas.map(al => {
-                const r = s.resp[al.id] || {};
+              ${expandirAlineas(dim).map(item => {
+                const r = s.resp[item.id] || {};
                 return `<tr>
-                  <td class="rt-t">${al.texto}</td>
+                  <td class="rt-pfx">${item.prefixo}</td>
+                  <td class="rt-t">${item.texto}</td>
                   <td class="rt-sn">${snBadge(r.continuidade)}</td>
                   <td class="rt-sn">${snBadge(r.adequacao)}</td>
                   <td class="rt-o">${r.obs ? `<span class="obs-text">${r.obs}</span>` : "—"}</td>
@@ -2047,11 +2067,12 @@ function buildSetoresData(all) {
     const imo   = calcIMO(resp, total);
     const status = d.status || "nao_iniciado";
     const dimScores = DIMENSOES.map(dim => {
-      const maxPts = dim.alineas.length * 2;
+      const itens = expandirAlineas(dim);
+      const maxPts = itens.length * 2;
       if (maxPts === 0) return 0;
       let pts = 0;
-      dim.alineas.forEach(al => {
-        const r = resp[al.id];
+      itens.forEach(item => {
+        const r = resp[item.id];
         if (r?.continuidade === "sim") pts++;
         if (r?.adequacao    === "sim") pts++;
       });
@@ -2110,14 +2131,15 @@ function exportPDFSetor(s) {
   const detDims = DIMENSOES.map(dim => `
     <h3>${dim.icone} ${dim.titulo}</h3>
     <table>
-      <thead><tr><th style="width:40%">Alínea</th><th>Continuidade</th><th>Adequação</th><th>Observação</th></tr></thead>
+      <thead><tr><th style="width:5%">#</th><th style="width:38%">Alínea</th><th>Continuidade</th><th>Adequação</th><th>Observação</th></tr></thead>
       <tbody>
-        ${dim.alineas.map(al => {
-          const r = s.resp[al.id] || {};
+        ${expandirAlineas(dim).map(item => {
+          const r = s.resp[item.id] || {};
           const corC = r.continuidade==="sim"?"#16a34a":r.continuidade==="nao"?"#dc2626":"#6b7280";
           const corA = r.adequacao==="sim"?"#16a34a":r.adequacao==="nao"?"#dc2626":"#6b7280";
           return `<tr>
-            <td>${al.texto}</td>
+            <td style="font-weight:700;color:#475569">${item.prefixo}</td>
+            <td>${item.texto}</td>
             <td style="text-align:center;font-weight:700;color:${corC}">${r.continuidade==="sim"?"✔ Sim":r.continuidade==="nao"?"✘ Não":"—"}</td>
             <td style="text-align:center;font-weight:700;color:${corA}">${r.adequacao==="sim"?"✔ Sim":r.adequacao==="nao"?"✘ Não":"—"}</td>
             <td>${r.obs ? `<em>${r.obs}</em>` : "—"}</td>
@@ -2196,10 +2218,11 @@ function exportPDF(data) {
       <table>
         <thead><tr><th style="width:38%">Alínea</th><th>Continuidade</th><th>Adequação</th><th>Observação</th></tr></thead>
         <tbody>
-          ${dim.alineas.map(al => {
-            const r = s.resp[al.id] || {};
+          ${expandirAlineas(dim).map(item => {
+            const r = s.resp[item.id] || {};
             return `<tr>
-              <td>${al.texto}</td>
+              <td style="font-weight:700;color:#475569;white-space:nowrap">${item.prefixo}</td>
+              <td>${item.texto}</td>
               <td style="text-align:center;font-weight:700;color:${r.continuidade==="sim"?"#16a34a":r.continuidade==="nao"?"#dc2626":"#6b7280"}">${r.continuidade==="sim"?"✔ Sim":r.continuidade==="nao"?"✘ Não":"—"}</td>
               <td style="text-align:center;font-weight:700;color:${r.adequacao==="sim"?"#16a34a":r.adequacao==="nao"?"#dc2626":"#6b7280"}">${r.adequacao==="sim"?"✔ Sim":r.adequacao==="nao"?"✘ Não":"—"}</td>
               <td>${r.obs||"—"}</td>

@@ -1533,3 +1533,18 @@ body {
 .scp-al-sub {
   padding-left: 14px !important;
 }
+
+
+/* ── Coluna de prefixo (a) 01, b) 02...) nas tabelas admin ──────── */
+.rt-pfx {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #475569;
+  white-space: nowrap;
+  text-align: center;
+  vertical-align: middle;
+  background: #f1f5f9;
+  border-radius: 4px;
+  padding: 3px 6px !important;
+}
