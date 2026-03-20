@@ -113,6 +113,7 @@ let currentSetorId = null;
 let isAdmin        = false;
 let adminMode      = true;
 let respostasSetor = {};
+let pmggSetor      = [];  // array de planos de melhoria do setor no ano
 let chartInstances = {};
 let adminTab       = "dashboard";
 
@@ -217,6 +218,30 @@ async function loadRespostas(setorId) {
   } catch(e) { respostasSetor = {}; }
 }
 
+
+// ─── PMGG — Plano de Melhoria (por ano, por setor) ───────────────
+function colPMGG(ano) { return `pmgg_${ano}`; }
+
+async function loadPMGG(setorId) {
+  try {
+    const snap = await getDoc(doc(db, colPMGG(anoSelecionado), setorId));
+    pmggSetor = snap.exists() ? (snap.data().planos || []) : [];
+  } catch(e) { pmggSetor = []; }
+}
+
+async function savePMGG(setorId) {
+  try {
+    await setDoc(doc(db, colPMGG(anoSelecionado), setorId), {
+      setorId, ano: anoSelecionado,
+      planos: pmggSetor,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch(e) {
+    toast("Erro ao salvar PMGG: " + e.message, "warn");
+    console.error("savePMGG:", e);
+  }
+}
+
 async function saveResposta(setorId, alId, campo, valor) {
   if (!respostasSetor[alId]) respostasSetor[alId] = { continuidade:null, adequacao:null, obs:"", anexos:[], ts: new Date().toISOString() };
   respostasSetor[alId][campo] = valor;
@@ -282,6 +307,7 @@ onAuthStateChanged(auth, async (user) => {
       if (setor) {
         isAdmin = false; currentSetorId = setor.id;
         await loadRespostas(setor.id);
+        await loadPMGG(setor.id);
         renderSetorShell(setor);
         renderForm();
       } else { await signOut(auth); }
@@ -392,6 +418,10 @@ function renderSetorShell(setor, isAdminToggled = false) {
         </div>
       </header>
       ${soLeitura ? `<div class="ano-readonly-banner">🔒 A avaliação de <strong>${anoSelecionado}</strong> está encerrada. Visualização somente leitura.</div>` : ""}
+      <nav class="setor-nav">
+        <button class="setor-tab at-active" id="tabAvaliacao">📋 Avaliação</button>
+        <button class="setor-tab" id="tabPMGG">🎯 Plano de Melhoria (PMGG)</button>
+      </nav>
       <div class="prog-strip"><div class="prog-fill" id="progFill"></div></div>
       <div class="prog-info" id="progInfo"></div>
       <main class="setor-main" id="sMain"></main>
@@ -406,9 +436,27 @@ function renderSetorShell(setor, isAdminToggled = false) {
   if (anosVisiveis.length > 1) {
     bindAnoSeletor(async () => {
       await loadRespostas(setor.id);
+      await loadPMGG(setor.id);
       renderForm();
     });
   }
+
+  // Navegação entre abas do setor
+  document.getElementById("tabAvaliacao").addEventListener("click", () => {
+    document.getElementById("tabAvaliacao").classList.add("at-active");
+    document.getElementById("tabPMGG").classList.remove("at-active");
+    // Esconde prog strip apenas no PMGG
+    document.querySelector(".prog-strip").style.display = "";
+    document.getElementById("progInfo").style.display = "";
+    renderForm();
+  });
+  document.getElementById("tabPMGG").addEventListener("click", () => {
+    document.getElementById("tabPMGG").classList.add("at-active");
+    document.getElementById("tabAvaliacao").classList.remove("at-active");
+    document.querySelector(".prog-strip").style.display = "none";
+    document.getElementById("progInfo").style.display = "none";
+    renderPMGG(setor);
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -568,6 +616,247 @@ function renderForm() {
 
   dimsSetor.forEach(dim => dim.alineas.forEach(al => bindAnexoRemove(al.id)));
   document.getElementById("btnSubmit")?.addEventListener("click", () => submitForm(currentSetorId));
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+//  SETOR — PLANO DE MELHORIA DE GOVERNANÇA E GESTÃO (PMGG)
+//  GUT: Gravidade × Urgência × Tendência (1–5 cada, máx 125)
+// ═══════════════════════════════════════════════════════════════
+const GUT_ESCALA = [
+  { valor:5, label:"5", title:"Extremamente grave / Ação imediata / Agravamento imediato" },
+  { valor:4, label:"4", title:"Muito grave / Alguma urgência / Piora em curto prazo" },
+  { valor:3, label:"3", title:"Grave / Ação o mais rápido possível / Piora em médio prazo" },
+  { valor:2, label:"2", title:"Pouco grave / Pode esperar / Piora em longo prazo" },
+  { valor:1, label:"1", title:"Não grave / Sem pressa / Pode até melhorar" },
+];
+
+function gutCor(res) {
+  if (res >= 100) return "#ef4444";
+  if (res >= 60)  return "#f97316";
+  if (res >= 27)  return "#eab308";
+  if (res >= 8)   return "#22c55e";
+  return "#06b6d4";
+}
+
+// Alíneas com "Não" em continuidade OU adequação — base para o PMGG
+function getAlineasNao() {
+  const resultado = [];
+  getDimensoesParaSetor(currentSetorId).forEach(dim => {
+    dim.alineas.forEach(al => {
+      const r = respostasSetor[al.id] || {};
+      if (r.continuidade === "nao" || r.adequacao === "nao") {
+        resultado.push({ al, dim, r });
+      }
+    });
+  });
+  return resultado;
+}
+
+function renderPMGG(setor) {
+  const soLeitura = (() => { const a = anosDisponiveis.find(x => x.ano === anoSelecionado); return a && !a.ativo; })();
+  const alineasNao = getAlineasNao();
+
+  let html = `<div class="pmgg-wrap">
+    <div class="pmgg-head">
+      <h1 class="pmgg-title">🎯 Plano de Melhoria de Governança e Gestão</h1>
+      <p class="pmgg-desc">Para cada alínea respondida como <strong>"Não"</strong>, descreva a oportunidade de melhoria, avalie pelo método <strong>GUT</strong> (Gravidade × Urgência × Tendência) e preencha o Plano de Melhoria correspondente.</p>
+      ${soLeitura ? `<div class="ano-readonly-banner" style="margin-top:12px;border-radius:8px">🔒 Ano encerrado — somente leitura.</div>` : ""}
+    </div>`;
+
+  if (alineasNao.length === 0) {
+    html += `<div class="pmgg-empty">
+      <span class="pmgg-empty-ico">✅</span>
+      <p>Nenhuma alínea respondida como "Não" ainda.<br>Complete a avaliação para liberar os planos de melhoria.</p>
+    </div>`;
+  } else {
+    alineasNao.forEach(({ al, dim }) => {
+      const plano = pmggSetor.find(p => p.alId === al.id) || {
+        alId: al.id,
+        oportunidade: "",
+        gravidade: null, urgencia: null, tendencia: null,
+        nomePmgg: "", indicador: "", meta: "", ano: anoSelecionado,
+        dataInicio: "", recurso: "", local: setor.nome, quem: "", como: "",
+      };
+      const G = plano.gravidade, U = plano.urgencia, T = plano.tendencia;
+      const resultado = (G && U && T) ? G * U * T : null;
+
+      html += `
+      <div class="pmgg-card" id="pmgg-${al.id}">
+
+        <!-- Cabeçalho da dimensão + alínea -->
+        <div class="pmgg-card-hdr">
+          <span class="pmgg-dim-badge">${dim.icone} ${dim.titulo}</span>
+          <span class="pmgg-al-id">${al.id}</span>
+        </div>
+        <div class="pmgg-al-txt">${al.texto}</div>
+
+        <!-- Seção GUT -->
+        <div class="pmgg-section-title">Oportunidade de Melhoria</div>
+        <div class="pmgg-field">
+          <label>Descrição da oportunidade de melhoria</label>
+          <textarea class="pmgg-textarea" id="op-${al.id}" data-alid="${al.id}" data-campo="oportunidade"
+            placeholder="Descreva qual melhoria deve ser realizada para esta alínea..." rows="3"
+            ${soLeitura?"readonly":""}>${plano.oportunidade}</textarea>
+        </div>
+
+        <!-- Pontuação GUT -->
+        <div class="gut-row">
+          ${["gravidade","urgencia","tendencia"].map(campo => {
+            const labels = { gravidade:"Gravidade", urgencia:"Urgência", tendencia:"Tendência" };
+            const val = plano[campo];
+            return `<div class="gut-col">
+              <div class="gut-col-label">${labels[campo]}</div>
+              <div class="gut-btns">
+                ${GUT_ESCALA.map(op => `
+                  <button class="gut-btn${val===op.valor?" gut-sel":""}" ${soLeitura?"disabled":""}
+                    data-alid="${al.id}" data-campo="${campo}" data-valor="${op.valor}"
+                    title="${op.title}">${op.label}</button>`).join("")}
+              </div>
+            </div>`;
+          }).join("")}
+          <div class="gut-resultado">
+            <div class="gut-res-label">Resultado</div>
+            <div class="gut-res-val" id="gut-res-${al.id}" style="color:${resultado?gutCor(resultado):"#94a3b8"}">
+              ${resultado ?? "—"}
+            </div>
+            ${resultado ? `<div class="gut-res-nivel" style="color:${gutCor(resultado)}">${resultado>=100?"Crítico":resultado>=60?"Alto":resultado>=27?"Médio":resultado>=8?"Baixo":"Mínimo"}</div>` : ""}
+          </div>
+        </div>
+
+        <!-- PMGG -->
+        <div class="pmgg-section-title">Plano de Melhoria de Governança e Gestão (PMGG)</div>
+        <div class="pmgg-grid">
+          <div class="pmgg-field pmgg-col-2">
+            <label>Nome do PMGG</label>
+            <input class="pmgg-input" id="nomePmgg-${al.id}" data-alid="${al.id}" data-campo="nomePmgg"
+              placeholder="Título do plano de melhoria" value="${plano.nomePmgg}" ${soLeitura?"readonly":""}/>
+          </div>
+          <div class="pmgg-field pmgg-col-2">
+            <label>Indicador</label>
+            <input class="pmgg-input" id="indicador-${al.id}" data-alid="${al.id}" data-campo="indicador"
+              placeholder="Como será medido o resultado" value="${plano.indicador}" ${soLeitura?"readonly":""}/>
+          </div>
+          <div class="pmgg-field">
+            <label>Meta (%)</label>
+            <input class="pmgg-input" id="meta-${al.id}" data-alid="${al.id}" data-campo="meta"
+              type="number" min="0" max="100" placeholder="Ex: 80"
+              value="${plano.meta}" ${soLeitura?"readonly":""}/>
+          </div>
+          <div class="pmgg-field">
+            <label>Ano de Finalização</label>
+            <input class="pmgg-input" id="ano-${al.id}" data-alid="${al.id}" data-campo="ano"
+              type="number" min="2020" max="2099" placeholder="${anoSelecionado}"
+              value="${plano.ano}" ${soLeitura?"readonly":""}/>
+          </div>
+          <div class="pmgg-field">
+            <label>Data de Início (mês/ano)</label>
+            <input class="pmgg-input" id="dataInicio-${al.id}" data-alid="${al.id}" data-campo="dataInicio"
+              placeholder="Ex: Janeiro/2025" value="${plano.dataInicio}" ${soLeitura?"readonly":""}/>
+          </div>
+          <div class="pmgg-field">
+            <label>Recursos Financeiros</label>
+            <input class="pmgg-input" id="recurso-${al.id}" data-alid="${al.id}" data-campo="recurso"
+              placeholder="Ex: R$ 50.000,00" value="${plano.recurso}" ${soLeitura?"readonly":""}/>
+          </div>
+          <div class="pmgg-field">
+            <label>Local</label>
+            <input class="pmgg-input" id="local-${al.id}" data-alid="${al.id}" data-campo="local"
+              placeholder="Setor responsável" value="${plano.local||setor.nome}" ${soLeitura?"readonly":""}/>
+          </div>
+          <div class="pmgg-field">
+            <label>Quem (cargo)</label>
+            <input class="pmgg-input" id="quem-${al.id}" data-alid="${al.id}" data-campo="quem"
+              placeholder="Ex: Gerente" value="${plano.quem}" ${soLeitura?"readonly":""}/>
+          </div>
+          <div class="pmgg-field pmgg-col-2">
+            <label>Como (ações estratégicas)</label>
+            <textarea class="pmgg-textarea" id="como-${al.id}" data-alid="${al.id}" data-campo="como"
+              placeholder="Descreva as ações que serão realizadas para atingir a melhoria..." rows="4"
+              ${soLeitura?"readonly":""}>${plano.como}</textarea>
+          </div>
+        </div>
+
+        ${!soLeitura ? `<div class="pmgg-save-row">
+          <button class="btn-pmgg-save" data-alid="${al.id}">💾 Salvar Plano</button>
+        </div>` : ""}
+
+      </div>`;
+    });
+  }
+
+  html += `</div>`;
+  document.getElementById("sMain").innerHTML = html;
+
+  if (soLeitura) return;
+
+  // ── Botões GUT
+  document.querySelectorAll(".gut-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const alId  = btn.dataset.alid;
+      const campo = btn.dataset.campo;
+      const valor = +btn.dataset.valor;
+      // Atualiza visualmente
+      document.querySelectorAll(`.gut-btn[data-alid="${alId}"][data-campo="${campo}"]`)
+        .forEach(b => b.classList.toggle("gut-sel", +b.dataset.valor === valor));
+      // Garante plano no array
+      let plano = pmggSetor.find(p => p.alId === alId);
+      if (!plano) {
+        const s = SETORES.find(x => x.id === currentSetorId);
+        plano = { alId, oportunidade:"", gravidade:null, urgencia:null, tendencia:null,
+          nomePmgg:"", indicador:"", meta:"", ano:anoSelecionado,
+          dataInicio:"", recurso:"", local:s?.nome||"", quem:"", como:"" };
+        pmggSetor.push(plano);
+      }
+      plano[campo] = valor;
+      // Atualiza resultado
+      const G = plano.gravidade, U = plano.urgencia, T = plano.tendencia;
+      const res = (G && U && T) ? G * U * T : null;
+      const el  = document.getElementById("gut-res-"+alId);
+      if (el) {
+        el.textContent = res ?? "—";
+        el.style.color = res ? gutCor(res) : "#94a3b8";
+        // Nível
+        let nv = el.nextElementSibling;
+        if (res) {
+          const nivel = res>=100?"Crítico":res>=60?"Alto":res>=27?"Médio":res>=8?"Baixo":"Mínimo";
+          if (!nv || !nv.classList.contains("gut-res-nivel")) {
+            nv = document.createElement("div");
+            nv.className = "gut-res-nivel";
+            el.after(nv);
+          }
+          nv.textContent = nivel;
+          nv.style.color = gutCor(res);
+        } else if (nv?.classList.contains("gut-res-nivel")) {
+          nv.remove();
+        }
+      }
+    });
+  });
+
+  // ── Salvar plano individual
+  document.querySelectorAll(".btn-pmgg-save").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const alId = btn.dataset.alid;
+      let plano  = pmggSetor.find(p => p.alId === alId);
+      if (!plano) {
+        const s = SETORES.find(x => x.id === currentSetorId);
+        plano = { alId, oportunidade:"", gravidade:null, urgencia:null, tendencia:null,
+          nomePmgg:"", indicador:"", meta:"", ano:anoSelecionado,
+          dataInicio:"", recurso:"", local:s?.nome||"", quem:"", como:"" };
+        pmggSetor.push(plano);
+      }
+      // Lê todos os campos do card
+      ["oportunidade","nomePmgg","indicador","meta","ano","dataInicio","recurso","local","quem","como"].forEach(campo => {
+        const el = document.getElementById(`${campo}-${alId}`);
+        if (el) plano[campo] = el.value;
+      });
+      btn.textContent = "Salvando..."; btn.disabled = true;
+      await savePMGG(currentSetorId);
+      btn.textContent = "💾 Salvar Plano"; btn.disabled = false;
+      toast("Plano salvo! ✅", "success");
+    });
+  });
 }
 
 function renderAnexosHtml(alId, anexos, soLeitura=false) {

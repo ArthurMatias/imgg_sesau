@@ -996,3 +996,322 @@ body {
   background: #dbeafe;
   border-color: #93c5fd;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   IMGG v6.1 — PMGG · GUT · Navegação do Setor
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Navegação por abas do setor (Avaliação | PMGG) ─────────────── */
+.setor-nav {
+  display: flex;
+  gap: 0;
+  background: #fff;
+  border-bottom: 2px solid var(--bdr);
+  padding: 0 24px;
+}
+
+.setor-tab {
+  padding: 12px 22px;
+  border: none;
+  background: transparent;
+  font-family: 'Sora', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--mu);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all .2s;
+  white-space: nowrap;
+}
+
+.setor-tab:hover { color: var(--tx); background: #f8fafc; }
+
+.setor-tab.at-active {
+  color: var(--ac);
+  font-weight: 700;
+  border-bottom-color: var(--ac);
+  background: #fff;
+}
+
+/* ── Wrapper PMGG ───────────────────────────────────────────────── */
+.pmgg-wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 28px 16px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.pmgg-head {
+  background: #fff;
+  border-radius: var(--r);
+  padding: 24px 28px;
+  box-shadow: var(--sh);
+  border: 1px solid var(--bdr);
+}
+
+.pmgg-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--ac);
+  margin-bottom: 8px;
+  letter-spacing: -.4px;
+}
+
+.pmgg-desc {
+  font-size: 13px;
+  color: var(--mu);
+  line-height: 1.6;
+}
+
+/* Vazio */
+.pmgg-empty {
+  background: #fff;
+  border-radius: var(--r);
+  padding: 48px 24px;
+  text-align: center;
+  box-shadow: var(--sh);
+  border: 1px solid var(--bdr);
+  color: var(--mu);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.pmgg-empty-ico { font-size: 40px; display: block; margin-bottom: 12px; }
+
+/* ── Card por alínea ────────────────────────────────────────────── */
+.pmgg-card {
+  background: #fff;
+  border-radius: var(--r);
+  box-shadow: var(--sh);
+  border: 1px solid var(--bdr);
+  overflow: hidden;
+}
+
+.pmgg-card-hdr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  background: linear-gradient(to right, #f8fafc, #f1f5f9);
+  border-bottom: 1px solid var(--bdr);
+}
+
+.pmgg-dim-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ac);
+  background: #e0f2fe;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.pmgg-al-id {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--mu);
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.pmgg-al-txt {
+  font-size: 13px;
+  color: var(--tx);
+  line-height: 1.55;
+  padding: 14px 18px 0;
+  font-weight: 500;
+}
+
+/* ── Título de seção interna ────────────────────────────────────── */
+.pmgg-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: #fff;
+  background: var(--ac);
+  padding: 6px 18px;
+  margin-top: 16px;
+}
+
+/* ── Campo genérico ─────────────────────────────────────────────── */
+.pmgg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.pmgg-field label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mu);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.pmgg-input, .pmgg-textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border: 2px solid var(--bdr);
+  border-radius: 8px;
+  font-family: 'Sora', sans-serif;
+  font-size: 13px;
+  color: var(--tx);
+  background: #f8fafc;
+  transition: border-color .2s, background .2s;
+  box-sizing: border-box;
+}
+
+.pmgg-input:focus, .pmgg-textarea:focus {
+  outline: none;
+  border-color: var(--ac);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(0,61,122,.07);
+}
+
+.pmgg-textarea { resize: vertical; line-height: 1.5; min-height: 72px; }
+
+.pmgg-input[readonly], .pmgg-textarea[readonly] {
+  background: #f1f5f9;
+  color: var(--mu);
+  cursor: default;
+}
+
+/* ── Grid de campos do PMGG ─────────────────────────────────────── */
+.pmgg-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 18px;
+  padding: 16px 18px 4px;
+}
+
+.pmgg-col-2 { grid-column: span 2; }
+
+/* ── Linha de GUT ───────────────────────────────────────────────── */
+.gut-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 12px 16px;
+  align-items: start;
+  padding: 14px 18px;
+  background: #fafbff;
+  border-bottom: 1px solid var(--bdr);
+}
+
+.gut-col-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mu);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 6px;
+}
+
+.gut-btns {
+  display: flex;
+  gap: 5px;
+}
+
+.gut-btn {
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--bdr);
+  border-radius: 8px;
+  background: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mu);
+  cursor: pointer;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gut-btn:hover:not(:disabled) {
+  border-color: var(--ac);
+  color: var(--ac);
+  background: #eff6ff;
+  transform: translateY(-2px);
+}
+
+.gut-btn.gut-sel {
+  background: var(--ac);
+  border-color: var(--ac);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(0,61,122,.25);
+  transform: translateY(-2px);
+}
+
+.gut-btn:disabled { opacity: .5; cursor: default; }
+
+/* Resultado GUT */
+.gut-resultado {
+  text-align: center;
+  padding: 4px 0;
+}
+
+.gut-res-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--mu);
+  margin-bottom: 4px;
+}
+
+.gut-res-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.gut-res-nivel {
+  font-size: 10px;
+  font-weight: 700;
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+/* ── Botão salvar plano ─────────────────────────────────────────── */
+.pmgg-save-row {
+  padding: 14px 18px 18px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-pmgg-save {
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #003d7a, #0369a1);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Sora', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+.btn-pmgg-save:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0,61,122,.25);
+}
+
+.btn-pmgg-save:disabled { opacity: .6; cursor: default; }
+
+/* ── Responsivo ─────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .gut-row       { grid-template-columns: 1fr 1fr; }
+  .gut-resultado { grid-column: span 2; display: flex; align-items: center; gap: 12px; justify-content: center; }
+  .pmgg-grid     { grid-template-columns: 1fr; }
+  .pmgg-col-2    { grid-column: span 1; }
+  .gut-btn       { width: 30px; height: 30px; font-size: 12px; }
+}
