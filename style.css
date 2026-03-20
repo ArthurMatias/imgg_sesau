@@ -1122,7 +1122,7 @@ body {
   font-size: 13px;
   color: var(--tx);
   line-height: 1.55;
-  padding: 14px 18px 0;
+  padding: 14px 18px 12px;
   font-weight: 500;
 }
 
@@ -1134,8 +1134,23 @@ body {
   letter-spacing: .07em;
   color: #fff;
   background: var(--ac);
-  padding: 6px 18px;
-  margin-top: 16px;
+  padding: 8px 18px;
+  margin-top: 0;
+}
+
+/* ── Campo de oportunidade (acima do GUT) ───────────────────────── */
+.pmgg-field-oportunidade {
+  padding: 14px 18px 0;
+}
+
+.pmgg-field-oportunidade label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mu);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 6px;
 }
 
 /* ── Campo genérico ─────────────────────────────────────────────── */
@@ -1314,4 +1329,207 @@ body {
   .pmgg-grid     { grid-template-columns: 1fr; }
   .pmgg-col-2    { grid-column: span 1; }
   .gut-btn       { width: 30px; height: 30px; font-size: 12px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   IMGG — Alíneas com Letra + Sub-itens Numerados
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Grupo da letra (ex: a) A alta direção...) ──────────────────── */
+.al-grupo {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background .15s;
+}
+
+.al-grupo:last-child { border-bottom: none; }
+.al-grupo.al-ok { background: #f0fff4; }
+
+.al-grupo-hdr {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 20px 10px;
+  background: #f8fafc;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.al-letra-badge {
+  flex-shrink: 0;
+  min-width: 28px;
+  height: 28px;
+  background: var(--ac);
+  color: #fff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+.al-grupo-titulo {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tx);
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ── Sub-item numerado (ex: 01, 02) ─────────────────────────────── */
+.al-subitem {
+  padding: 14px 20px 14px 30px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  gap: 14px;
+  transition: background .15s;
+}
+
+.al-subitem:last-child { border-bottom: none; }
+.al-subitem:hover { background: #fafbff; }
+.al-subitem.al-ok { background: #f0fff4 !important; }
+
+.al-sub-num {
+  flex-shrink: 0;
+  min-width: 32px;
+  height: 24px;
+  background: #e0f2fe;
+  color: #0369a1;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  margin-top: 2px;
+  letter-spacing: .03em;
+}
+
+/* Dentro de al-grupo.al-ok, todos os sub-nums ficam verdes */
+.al-grupo.al-ok .al-sub-num {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .al-subitem { padding-left: 20px; }
+  .al-grupo-hdr { padding: 12px 16px 8px; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   IMGG — Editor de Alíneas: grupos com subitens
+   IMGG — Alíneas por Setor: grupos com subitens
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Editor global: grupo letra + subitens ──────────────────────── */
+.eda-grupo {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.eda-grupo-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.eda-letra {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ac);
+  flex-shrink: 0;
+  background: #e0f2fe;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.eda-grupo-titulo {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tx);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eda-subrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid #f8fafc;
+  background: #fff;
+}
+
+.eda-subrow:last-child { border-bottom: none; }
+
+.eda-sub-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #0369a1;
+  background: #e0f2fe;
+  padding: 2px 7px;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+
+.eda-sub-txt {
+  font-size: 12px;
+  color: #374151;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Alíneas por Setor: grupo letra + subitens ──────────────────── */
+.scp-al-grupo {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.scp-al-grupo-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  pointer-events: none;
+}
+
+.scp-al-letra {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ac);
+  background: #e0f2fe;
+  padding: 2px 7px;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+
+.scp-al-grupo-titulo {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tx);
+  line-height: 1.4;
+}
+
+.scp-al-sub {
+  padding-left: 14px !important;
 }

@@ -47,60 +47,198 @@ const SETORES = [
 
 const DIMENSOES_PADRAO = [
   { id:"D1", titulo:"Governança", icone:"🏛️", alineas:[
-    { id:"D1a", texto:"1. Promover a avaliação das prioridades considerando as competências regimentais ou a missão da instituição." },
-    { id:"D1b", texto:"2. Promover a avaliação dos resultados alcançados considerando as competências regimentais ou a missão da instituição." },
-    { id:"D1c", texto:"3. Assegurar a tomada de decisão com base em informações alinhadas às diretrizes de governo." },
-    { id:"D1d", texto:"4. Assegurar a tomada de decisão com base em informações alinhadas ao interesse público." },
-    { id:"D1e", texto:"5. Promover o monitoramento do desempenho institucional com foco nos resultados estratégicos ou nas prioridades estabelecidas." },
-    { id:"D1f", texto:"6. Promover a divulgação do desempenho institucional com foco nos resultados estratégicos ou nas prioridades estabelecidas." },
-    { id:"D1g", texto:"7. Disponibilizar dados e informações para subsidiar o processo decisório." },
-    { id:"D1h", texto:"8. Assegurar a realização periódica de cópias de segurança (backups), senhas de acesso, entre outras práticas de segurança dos sistemas de informação." },
-    { id:"D1i", texto:"9. Promover a edição ou atualização da Carta de Serviços ao Cidadão." },
-    { id:"D1j", texto:"10. Promover o comportamento ético em relação aos compromissos assumidos." },
-    { id:"D1k", texto:"11. Promover a identificação dos principais riscos." },
-    { id:"D1l", texto:"12. Promover a divulgação dos principais riscos." },
+    { id:"D1a", letra:"a", titulo:"A alta direção promove a avaliação das prioridades e dos resultados alcançados considerando as competências regimentais ou a missão da instituição.", subitens:[
+      { id:"D1a01", num:"01", texto:"A alta direção promove a avaliação das prioridades considerando a missão ou competências regimentais da instituição." },
+      { id:"D1a02", num:"02", texto:"A alta direção promove a avaliação dos resultados alcançados considerando a missão ou competências regimentais da instituição." },
+    ]},
+    { id:"D1b", letra:"b", titulo:"A alta direção assegura a tomada de decisão com base em informações alinhadas às diretrizes de governo e ao interesse público.", subitens:[
+      { id:"D1b01", num:"01", texto:"A alta direção assegura a tomada de decisão com base em informações alinhadas às diretrizes de governo." },
+      { id:"D1b02", num:"02", texto:"A alta direção assegura a tomada de decisão com base em informações alinhadas ao interesse público." },
+    ]},
+    { id:"D1c", letra:"c", titulo:"A alta direção promove o monitoramento e a divulgação do desempenho institucional com foco nos resultados estratégicos ou nas prioridades estabelecidas.", subitens:[
+      { id:"D1c01", num:"01", texto:"A alta direção promove o monitoramento do desempenho institucional com foco nos resultados estratégicos ou nas prioridades estabelecidas." },
+      { id:"D1c02", num:"02", texto:"A alta direção promove a divulgação do desempenho institucional com foco nos resultados estratégicos ou nas prioridades estabelecidas." },
+    ]},
+    { id:"D1d", letra:"d", titulo:"A alta direção dispõe de dados e informações para subsidiar o seu processo decisório.", subitens:[
+      { id:"D1d01", num:"01", texto:"A alta direção dispõe de dados e informações para subsidiar o seu processo decisório." },
+    ]},
+    { id:"D1e", letra:"e", titulo:"A alta direção assegura a realização periódica de cópia de segurança (backups), senhas de acesso, dentre outras práticas de segurança dos sistemas de informação.", subitens:[
+      { id:"D1e01", num:"01", texto:"A alta direção assegura a realização periódica de cópia de segurança (backups), senhas de acesso, entre outras práticas de segurança dos sistemas de informação." },
+    ]},
+    { id:"D1f", letra:"f", titulo:"A alta direção promove a edição ou atualização da Carta de Serviços ao Cidadão e o comportamento ético em relação aos compromissos assumidos.", subitens:[
+      { id:"D1f01", num:"01", texto:"A alta direção promove a edição ou atualização da Carta de Serviços ao Cidadão." },
+      { id:"D1f02", num:"02", texto:"A alta direção promove o comportamento ético em relação aos compromissos assumidos." },
+    ]},
+    { id:"D1g", letra:"g", titulo:"A alta direção promove a identificação e a divulgação dos principais riscos.", subitens:[
+      { id:"D1g01", num:"01", texto:"A alta direção promove a identificação dos principais riscos." },
+      { id:"D1g02", num:"02", texto:"A alta direção promove a divulgação dos principais riscos." },
+    ]},
   ]},
   { id:"D2", titulo:"Estratégias e Planos", icone:"🗺️", alineas:[
-    { id:"D2a", texto:"Os processos de trabalho estão mapeados e documentados (fluxogramas, POPs)?" },
-    { id:"D2b", texto:"Existem procedimentos para revisão e melhoria contínua dos processos?" },
-    { id:"D2c", texto:"Os fluxos de informação entre setores são formalizados e eficientes?" },
-    { id:"D2d", texto:"Há controle de versões e atualização periódica dos documentos normativos?" },
-    { id:"D2e", texto:"Os processos críticos possuem planos de contingência definidos?" },
+    { id:"D2a", letra:"a", titulo:"As estratégias estão definidas com base na missão e visão ou as metas estão definidas com base nas prioridades da instituição e são divulgadas.", subitens:[
+      { id:"D2a01", num:"01", texto:"As estratégias estão definidas com base na missão e visão ou as metas estão definidas com base nas prioridades da instituição." },
+      { id:"D2a02", num:"02", texto:"As estratégias ou as metas são divulgadas." },
+    ]},
+    { id:"D2b", letra:"b", titulo:"As necessidades dos cidadãos-usuários são consideradas na definição e revisão das prioridades estabelecidas ou das estratégias.", subitens:[
+      { id:"D2b01", num:"01", texto:"As necessidades dos cidadãos-usuários são consideradas na definição e revisão das prioridades estabelecidas ou das estratégias." },
+    ]},
+    { id:"D2c", letra:"c", titulo:"Os planos de ação para as prioridades ou estratégias estabelecidas são estruturados e divulgados, definindo prazos, custos e responsáveis.", subitens:[
+      { id:"D2c01", num:"01", texto:"Os planos de ação para as prioridades ou estratégias estabelecidas são estruturados, definindo prazos, custos e responsáveis." },
+      { id:"D2c02", num:"02", texto:"Os planos de ação para as prioridades ou estratégias estabelecidas são divulgados." },
+    ]},
+    { id:"D2d", letra:"d", titulo:"Os planos de ação e projetos são acompanhados sistematicamente e seus avanços e resultados divulgados ao público-alvo.", subitens:[
+      { id:"D2d01", num:"01", texto:"Os planos de ação e projetos são acompanhados sistematicamente." },
+      { id:"D2d02", num:"02", texto:"Os planos de ação e projetos; e seus avanços e resultados divulgados ao público-alvo." },
+    ]},
+    { id:"D2e", letra:"e", titulo:"A programação orçamentária é realizada e divulgada com base nas prioridades estabelecidas ou na estratégia.", subitens:[
+      { id:"D2e01", num:"01", texto:"A programação orçamentária é realizada com base nas prioridades estabelecidas ou na estratégia." },
+      { id:"D2e02", num:"02", texto:"A programação orçamentária é divulgada." },
+    ]},
   ]},
   { id:"D3", titulo:"Público Alvo", icone:"🎯", alineas:[
-    { id:"D3a", texto:"Existe plano de capacitação alinhado às necessidades estratégicas do setor?" },
-    { id:"D3b", texto:"São realizadas avaliações de desempenho dos servidores de forma sistemática?" },
-    { id:"D3c", texto:"O dimensionamento da força de trabalho é monitorado e atualizado?" },
-    { id:"D3d", texto:"Há programas de qualidade de vida e saúde do trabalhador implementados?" },
-    { id:"D3e", texto:"Existe política de gestão do conhecimento e sucessão de funções críticas?" },
+    { id:"D3a", letra:"a", titulo:"O perfil e os requisitos de atendimento aos cidadãos usuários estão definidos e divulgados.", subitens:[
+      { id:"D3a01", num:"01", texto:"O perfil e os requisitos de atendimento aos cidadãos usuários estão definidos." },
+      { id:"D3a02", num:"02", texto:"O perfil e os requisitos de atendimento aos cidadãos usuários estão divulgados." },
+    ]},
+    { id:"D3b", letra:"b", titulo:"As necessidades ou expectativas dos cidadãos-usuários estão identificadas e divulgadas.", subitens:[
+      { id:"D3b01", num:"01", texto:"As necessidades ou expectativas dos cidadãos-usuários estão identificadas." },
+      { id:"D3b02", num:"02", texto:"As necessidades ou expectativas dos cidadãos-usuários estão divulgadas." },
+    ]},
+    { id:"D3c", letra:"c", titulo:"A instituição dispõe de canais de relacionamento compatíveis com o perfil dos cidadãos usuários, fornecedores e parceiros.", subitens:[
+      { id:"D3c01", num:"01", texto:"A instituição dispõe de canais de relacionamento compatíveis com o perfil dos cidadãos usuários." },
+      { id:"D3c02", num:"02", texto:"A instituição dispõe de canais de relacionamento compatíveis com o perfil dos fornecedores." },
+      { id:"D3c03", num:"03", texto:"A instituição dispõe de canais de relacionamento compatíveis com o perfil dos parceiros." },
+    ]},
+    { id:"D3d", letra:"d", titulo:"A Carta de Serviços ao Cidadão é divulgada e os compromissos formalizados são monitorados.", subitens:[
+      { id:"D3d01", num:"01", texto:"A Carta de Serviços ao Cidadão é divulgada." },
+      { id:"D3d02", num:"02", texto:"Os compromissos formalizados na Carta de Serviços ao Cidadão são monitorados." },
+    ]},
+    { id:"D3e", letra:"e", titulo:"A qualidade do atendimento aos cidadãos-usuários é avaliada e divulgada com base em padrões de desempenho preestabelecidos.", subitens:[
+      { id:"D3e01", num:"01", texto:"A qualidade do atendimento aos cidadãos-usuários é avaliada com base em padrões de desempenho preestabelecidos." },
+      { id:"D3e02", num:"02", texto:"A qualidade do atendimento aos cidadãos-usuários é divulgada." },
+    ]},
+    { id:"D3f", letra:"f", titulo:"As demandas (solicitações, reclamações, reivindicações ou denúncias) dos cidadãos-usuários são tratadas e os seus resultados são informados aos demandantes em tempo hábil.", subitens:[
+      { id:"D3f01", num:"01", texto:"As demandas (solicitações, reclamações, reivindicações ou denúncias) dos cidadãos-usuários são tratadas." },
+      { id:"D3f02", num:"02", texto:"Os seus resultados são informados aos interessados em tempo hábil." },
+    ]},
+    { id:"D3g", letra:"g", titulo:"São exigidas dos cidadãos apenas informações ou comprovações que não constem em bases de dados oficiais da administração pública.", subitens:[
+      { id:"D3g01", num:"01", texto:"São exigidas dos cidadãos apenas informações ou comprovações que não constem em bases de dados oficiais da administração pública." },
+    ]},
+    { id:"D3h", letra:"h", titulo:"São definidos e divulgados os critérios para seleção de fornecedores considerando os normativos vigentes.", subitens:[
+      { id:"D3h01", num:"01", texto:"São definidos os critérios para seleção de fornecedores considerando os normativos vigentes." },
+      { id:"D3h02", num:"02", texto:"São divulgados os critérios para seleção de fornecedores considerando os normativos vigentes." },
+    ]},
+    { id:"D3i", letra:"i", titulo:"O desempenho dos fornecedores é avaliado possibilitando o aprimoramento dos procedimentos para novas contratações.", subitens:[
+      { id:"D3i01", num:"01", texto:"Foram estabelecidos os procedimentos para avaliação do desempenho dos fornecedores, possibilitando o aprimoramento dos procedimentos para novas contratações." },
+      { id:"D3i02", num:"02", texto:"Foram divulgados os procedimentos para avaliação do desempenho dos fornecedores, possibilitando o aprimoramento dos procedimentos para novas contratações." },
+    ]},
   ]},
   { id:"D4", titulo:"Sustentabilidade", icone:"♻️", alineas:[
-    { id:"D4a", texto:"Os sistemas de informação utilizados são adequados às necessidades operacionais?" },
-    { id:"D4b", texto:"Existem políticas de segurança da informação implementadas e disseminadas?" },
-    { id:"D4c", texto:"Os dados produzidos são sistematizados e utilizados para tomada de decisão?" },
-    { id:"D4d", texto:"Há rotinas de backup e plano de continuidade dos sistemas críticos?" },
-    { id:"D4e", texto:"Os sistemas do setor são integrados entre si e com demais áreas da SESAU?" },
+    { id:"D4a", letra:"a", titulo:"São promovidas ações de sustentabilidade ambiental, social e econômica na execução das competências institucionais.", subitens:[
+      { id:"D4a01", num:"01", texto:"São promovidas ações de sustentabilidade ambiental na execução das competências institucionais." },
+      { id:"D4a02", num:"02", texto:"São promovidas ações de sustentabilidade social na execução das competências institucionais." },
+      { id:"D4a03", num:"03", texto:"São promovidas ações de sustentabilidade econômica na execução das competências institucionais." },
+    ]},
+    { id:"D4b", letra:"b", titulo:"A instituição dispõe de conselho ou instância similar, com representantes da sociedade, com foco nos aspectos ambiental, social e econômico.", subitens:[
+      { id:"D4b01", num:"01", texto:"A instituição dispõe de conselho ou instância similar, com representantes da sociedade, com foco nos aspectos ambiental." },
+      { id:"D4b02", num:"02", texto:"A instituição dispõe de conselho ou instância similar, com representantes da sociedade, com foco nos aspectos social." },
+      { id:"D4b03", num:"03", texto:"A instituição dispõe de conselho ou instância similar, com representantes da sociedade, com foco nos aspectos econômico." },
+    ]},
+    { id:"D4c", letra:"c", titulo:"O orçamento é divulgado e sua elaboração leva em consideração o histórico da execução orçamentária-financeira, bem como o atingimento das prioridades ou estratégias.", subitens:[
+      { id:"D4c01", num:"01", texto:"A elaboração do orçamento leva em consideração o histórico da execução orçamentária-financeira, bem como o atingimento das prioridades ou estratégias." },
+      { id:"D4c02", num:"02", texto:"O orçamento é divulgado." },
+    ]},
+    { id:"D4d", letra:"d", titulo:"O gerenciamento da execução financeira atende às prioridades ou estratégias da organização e possibilita o realinhamento do orçamento.", subitens:[
+      { id:"D4d01", num:"01", texto:"O gerenciamento da execução financeira atende às prioridades ou estratégias da organização." },
+      { id:"D4d02", num:"02", texto:"O gerenciamento da execução financeira possibilita o realinhamento do orçamento." },
+    ]},
+    { id:"D4e", letra:"e", titulo:"O Relatório de Gestão Fiscal ou instrumento similar é amplamente divulgado, inclusive em meios eletrônicos de acesso público.", subitens:[
+      { id:"D4e01", num:"01", texto:"O Relatório de Gestão Fiscal ou instrumento similar é amplamente divulgado, inclusive em meios eletrônicos de acesso público." },
+    ]},
   ]},
   { id:"D5", titulo:"Capital Intelectual", icone:"🧠", alineas:[
-    { id:"D5a", texto:"O planejamento orçamentário é alinhado ao planejamento estratégico?" },
-    { id:"D5b", texto:"A execução orçamentária é monitorada com relatórios periódicos?" },
-    { id:"D5c", texto:"Existem controles internos efetivos para prevenção de irregularidades?" },
-    { id:"D5d", texto:"As prestações de contas são realizadas dentro dos prazos estabelecidos?" },
-    { id:"D5e", texto:"Há análise de eficiência no uso dos recursos públicos disponíveis?" },
+    { id:"D5a", letra:"a", titulo:"A memória administrativa interna (pessoas, competência profissional, documentos, sistemas de informação) e os conhecimentos externos (referenciais comparativos da Administração Pública ou privada, mercado) são registrados e divulgados.", subitens:[
+      { id:"D5a01", num:"01", texto:"A memória administrativa interna (pessoas, competência profissional, documentos, sistemas de informação) são registrados e divulgados." },
+      { id:"D5a02", num:"02", texto:"Os conhecimentos externos (referenciais comparativos da Administração Pública ou privada, mercado) são registrados e divulgados." },
+    ]},
+    { id:"D5b", letra:"b", titulo:"O plano de capacitação está definido e divulgado, priorizando os conhecimentos necessários ao atendimento das prioridades e das estratégias estabelecidas.", subitens:[
+      { id:"D5b01", num:"01", texto:"O plano de capacitação está definido, priorizando os conhecimentos necessários ao atendimento das prioridades e das estratégias estabelecidas." },
+      { id:"D5b02", num:"02", texto:"O plano de capacitação é divulgado." },
+    ]},
+    { id:"D5c", letra:"c", titulo:"São utilizados mecanismos de desenvolvimento e compartilhamento do conhecimento entre os servidores.", subitens:[
+      { id:"D5c01", num:"01", texto:"São utilizados mecanismos de desenvolvimento dos servidores." },
+      { id:"D5c02", num:"02", texto:"São utilizados mecanismos de compartilhamento do conhecimento entre os servidores." },
+    ]},
+    { id:"D5d", letra:"d", titulo:"Os novos conhecimentos adquiridos subsidiam o aprimoramento dos sistemas de trabalho.", subitens:[
+      { id:"D5d01", num:"01", texto:"Os novos conhecimentos adquiridos subsidiam o aprimoramento dos sistemas de trabalho." },
+    ]},
+    { id:"D5e", letra:"e", titulo:"As equipes são dimensionadas e gerenciadas de forma a atender as demandas de trabalho.", subitens:[
+      { id:"D5e01", num:"01", texto:"As equipes são dimensionadas de forma a atender as demandas de trabalho." },
+      { id:"D5e02", num:"02", texto:"As equipes são gerenciadas de forma a atender as demandas de trabalho." },
+    ]},
+    { id:"D5f", letra:"f", titulo:"O desempenho das pessoas é avaliado de forma a estimular o alcance das prioridades estabelecidas ou das estratégias.", subitens:[
+      { id:"D5f01", num:"01", texto:"O desempenho das pessoas é avaliado de forma a estimular o alcance das prioridades estabelecidas ou das estratégias." },
+    ]},
+    { id:"D5g", letra:"g", titulo:"São implementadas ações de qualidade de vida voltadas à saúde ocupacional e à segurança no trabalho.", subitens:[
+      { id:"D5g01", num:"01", texto:"São implementadas ações de qualidade de vida voltadas à saúde ocupacional." },
+      { id:"D5g02", num:"02", texto:"São implementadas ações de qualidade de vida voltadas à segurança no trabalho." },
+    ]},
   ]},
   { id:"D6", titulo:"Processos", icone:"⚙️", alineas:[
-    { id:"D6a", texto:"O setor possui cultura organizacional orientada a resultados e inovação?" },
-    { id:"D6b", texto:"Há integração e comunicação efetiva com os demais setores da SESAU?" },
-    { id:"D6c", texto:"São realizadas reuniões de alinhamento estratégico com periodicidade definida?" },
-    { id:"D6d", texto:"O setor participa ativamente de processos de modernização institucional?" },
-    { id:"D6e", texto:"Existe gestão de riscos formalizada e aplicada às atividades do setor?" },
+    { id:"D6a", letra:"a", titulo:"Os principais processos finalísticos e de apoio estão padronizados e são divulgados.", subitens:[
+      { id:"D6a01", num:"01", texto:"Os principais processos finalísticos estão padronizados e são divulgados." },
+      { id:"D6a02", num:"02", texto:"Os principais processos de apoio estão padronizados e são divulgados." },
+    ]},
+    { id:"D6b", letra:"b", titulo:"Os principais processos finalísticos e de apoio são aprimorados e divulgados.", subitens:[
+      { id:"D6b01", num:"01", texto:"Os principais processos finalísticos são aprimorados e divulgados." },
+      { id:"D6b02", num:"02", texto:"Os principais processos de apoio são aprimorados e divulgados." },
+    ]},
+    { id:"D6c", letra:"c", titulo:"São incorporadas tecnologias aos principais processos finalísticos e de apoio visando ampliar sua capacidade de execução.", subitens:[
+      { id:"D6c01", num:"01", texto:"São incorporadas tecnologias aos principais processos finalísticos visando ampliar sua capacidade de execução." },
+      { id:"D6c02", num:"02", texto:"São incorporadas tecnologias aos principais processos de apoio visando ampliar sua capacidade de execução." },
+    ]},
+    { id:"D6d", letra:"d", titulo:"Os principais processos finalísticos e de apoio são monitorados.", subitens:[
+      { id:"D6d01", num:"01", texto:"Os principais processos finalísticos são monitorados." },
+      { id:"D6d02", num:"02", texto:"Os principais processos de apoio são monitorados." },
+    ]},
   ]},
   { id:"D7", titulo:"Valor Público", icone:"⭐", alineas:[
-    { id:"D7a", texto:"O setor possui cultura organizacional orientada a resultados e inovação?" },
-    { id:"D7b", texto:"Há integração e comunicação efetiva com os demais setores da SESAU?" },
-    { id:"D7c", texto:"São realizadas reuniões de alinhamento estratégico com periodicidade definida?" },
-    { id:"D7d", texto:"O setor participa ativamente de processos de modernização institucional?" },
-    { id:"D7e", texto:"Existe gestão de riscos formalizada e aplicada às atividades do setor?" },
+    { id:"D7a", letra:"a", titulo:"Os indicadores de desempenho para medir os resultados relativos às estratégias ou às prioridades estabelecidas estão definidos e são avaliados periodicamente.", subitens:[
+      { id:"D7a01", num:"01", texto:"Os indicadores de desempenho para medir os resultados relativos às estratégias ou às prioridades estabelecidas estão definidos." },
+      { id:"D7a02", num:"02", texto:"Os indicadores de desempenho para medir os resultados relativos às estratégias ou às prioridades estabelecidas são avaliados periodicamente." },
+    ]},
+    { id:"D7b", letra:"b", titulo:"Os indicadores de desempenho para medir os resultados relativos ao atendimento aos cidadãos-usuários estão definidos e são avaliados periodicamente.", subitens:[
+      { id:"D7b01", num:"01", texto:"Os indicadores de desempenho para medir os resultados relativos ao atendimento aos cidadãos-usuários estão definidos." },
+      { id:"D7b02", num:"02", texto:"Os indicadores de desempenho para medir os resultados relativos ao atendimento aos cidadãos-usuários são avaliados periodicamente." },
+    ]},
+    { id:"D7c", letra:"c", titulo:"Os indicadores de desempenho para medir resultados econômico-financeiros estão definidos e são avaliados periodicamente.", subitens:[
+      { id:"D7c01", num:"01", texto:"Os indicadores de desempenho para medir resultados econômico-financeiros estão definidos." },
+      { id:"D7c02", num:"02", texto:"Os indicadores de desempenho para medir resultados econômico-financeiros são avaliados periodicamente." },
+    ]},
+    { id:"D7d", letra:"d", titulo:"Os indicadores de desempenho para medir os resultados ambientais estão definidos e são avaliados periodicamente.", subitens:[
+      { id:"D7d01", num:"01", texto:"Os indicadores de desempenho para medir os resultados ambientais estão definidos." },
+      { id:"D7d02", num:"02", texto:"Os indicadores de desempenho para medir os resultados ambientais são avaliados periodicamente." },
+    ]},
+    { id:"D7e", letra:"e", titulo:"Os indicadores de desempenho para medir os resultados sociais estão definidos e são avaliados periodicamente.", subitens:[
+      { id:"D7e01", num:"01", texto:"Os indicadores de desempenho para medir os resultados sociais estão definidos." },
+      { id:"D7e02", num:"02", texto:"Os indicadores de desempenho para medir os resultados sociais são avaliados periodicamente." },
+    ]},
+    { id:"D7f", letra:"f", titulo:"Os indicadores de desempenho para medir os resultados relativos ao capital intelectual estão definidos e são avaliados periodicamente.", subitens:[
+      { id:"D7f01", num:"01", texto:"Os indicadores de desempenho para medir os resultados relativos ao capital intelectual estão definidos." },
+      { id:"D7f02", num:"02", texto:"Os indicadores de desempenho para medir os resultados relativos ao capital intelectual são avaliados periodicamente." },
+    ]},
+    { id:"D7g", letra:"g", titulo:"Os indicadores de desempenho para medir os resultados relativos aos fornecedores estão definidos e são avaliados periodicamente.", subitens:[
+      { id:"D7g01", num:"01", texto:"Os indicadores de desempenho para medir os resultados relativos aos fornecedores estão definidos." },
+      { id:"D7g02", num:"02", texto:"Os indicadores de desempenho para medir os resultados relativos aos fornecedores são avaliados periodicamente." },
+    ]},
+    { id:"D7h", letra:"h", titulo:"Os indicadores de desempenho para medir os resultados relativos aos processos estão definidos e são avaliados periodicamente.", subitens:[
+      { id:"D7h01", num:"01", texto:"Os indicadores de desempenho para medir os resultados relativos aos processos estão definidos." },
+      { id:"D7h02", num:"02", texto:"Os indicadores de desempenho para medir os resultados relativos aos processos são avaliados periodicamente." },
+    ]},
+    { id:"D7i", letra:"i", titulo:"Os indicadores de desempenho para medir os resultados relativos aos Planos de Melhoria da Gestão estabelecidos na aplicação anterior estão definidos e são avaliados periodicamente.", subitens:[
+      { id:"D7i01", num:"01", texto:"Os indicadores de desempenho para medir os resultados relativos aos Planos de Melhoria de Governança e Gestão estabelecidos na aplicação anterior estão definidos." },
+      { id:"D7i02", num:"02", texto:"Os indicadores de desempenho para medir os resultados relativos aos Planos de Melhoria da Gestão estabelecidos na aplicação anterior são avaliados periodicamente." },
+    ]},
   ]},
 ];
 
@@ -141,6 +279,14 @@ function calcIMO(respostas, total) {
   return parseFloat(((pts / maxPts) * 100).toFixed(1));
 }
 
+// ─── Helpers de estrutura de alíneas ────────────────────────────
+function temSubitens(al) { return Array.isArray(al.subitens) && al.subitens.length > 0; }
+function idsRespondiveisAl(al) { return temSubitens(al) ? al.subitens.map(s => s.id) : [al.id]; }
+function alRespondida(al, respostas) { return idsRespondiveisAl(al).every(id => isRespondida(respostas[id])); }
+function totalRespondiveisDim(dim) { return dim.alineas.reduce((s, al) => s + idsRespondiveisAl(al).length, 0); }
+
+
+
 // ─── Anos — Firebase ────────────────────────────────────────────
 async function loadAnos() {
   try {
@@ -175,12 +321,24 @@ function getDimensoesParaSetor(setorId) {
   if (!cfg || !cfg.alineasAtivas || cfg.alineasAtivas.length === 0) return DIMENSOES;
   const ativas = new Set(cfg.alineasAtivas);
   return DIMENSOES
-    .map(dim => ({ ...dim, alineas: dim.alineas.filter(al => ativas.has(al.id)) }))
+    .map(dim => ({
+      ...dim,
+      alineas: dim.alineas
+        .map(al => {
+          if (temSubitens(al)) {
+            // Filtra subitens ativos; mantém a letra se sobrar ao menos 1
+            const subsFiltrados = al.subitens.filter(s => ativas.has(s.id));
+            return subsFiltrados.length > 0 ? { ...al, subitens: subsFiltrados } : null;
+          }
+          return ativas.has(al.id) ? al : null;
+        })
+        .filter(Boolean)
+    }))
     .filter(dim => dim.alineas.length > 0);
 }
 
 function getTotalAlineasParaSetor(setorId) {
-  return getDimensoesParaSetor(setorId).reduce((s,d)=>s+d.alineas.length,0);
+  return getDimensoesParaSetor(setorId).reduce((s,d)=>s+totalRespondiveisDim(d),0);
 }
 
 async function loadDimensoesConfig() {
@@ -484,8 +642,9 @@ function renderForm() {
     </div>`;
 
   dimsSetor.forEach((dim, di) => {
-    const respDim  = dim.alineas.filter(a => isRespondida(respostasSetor[a.id])).length;
-    const completa = respDim === dim.alineas.length;
+    const respDim  = dim.alineas.filter(a => alRespondida(a, respostasSetor)).length;
+    const totalDim  = totalRespondiveisDim(dim);
+    const completa = respDim === totalDim;
 
     html += `
     <div class="dim-bloco${completa ? " dim-ok" : ""}">
@@ -495,20 +654,90 @@ function renderForm() {
           <span class="dim-cod">Dimensão ${di+1}</span>
           <span class="dim-nome">${dim.titulo}</span>
         </div>
-        <span class="dim-ct${completa ? " dc-ok" : ""}">${respDim}/${dim.alineas.length}</span>
+        <span class="dim-ct${completa ? " dc-ok" : ""}">${respDim}/${totalDim}</span>
       </div>
       <div class="alineas">`;
 
     dim.alineas.forEach((al, ai) => {
-      const r        = respostasSetor[al.id] || {};
-      const cont     = r.continuidade ?? null;
-      const adeq     = r.adequacao    ?? null;
-      const obs      = r.obs          ?? "";
-      const anexos   = r.anexos       || [];
-      const respondida = isRespondida(r);
-      const dis      = soLeitura ? "disabled" : "";
+      const letraChar  = String.fromCharCode(97 + ai); // a, b, c...
+      const alComplete = alRespondida(al, respostasSetor);
+      const dis        = soLeitura ? "disabled" : "";
 
-      html += `
+      if (temSubitens(al)) {
+        // ── NOVA ESTRUTURA: letra com sub-itens numerados
+        html += `
+        <div class="al-grupo${alComplete ? " al-ok" : ""}" id="al-${al.id}">
+          <div class="al-grupo-hdr">
+            <div class="al-letra-badge">${letraChar})</div>
+            <p class="al-grupo-titulo">${al.titulo}</p>
+          </div>`;
+
+        al.subitens.forEach(sub => {
+          const rs       = respostasSetor[sub.id] || {};
+          const cont     = rs.continuidade ?? null;
+          const adeq     = rs.adequacao    ?? null;
+          const obs      = rs.obs          ?? "";
+          const anexos   = rs.anexos       || [];
+          const subResp  = isRespondida(rs);
+
+          html += `
+          <div class="al-subitem${subResp ? " al-ok" : ""}" id="al-${sub.id}">
+            <div class="al-sub-num">${sub.num}</div>
+            <div class="al-body">
+              <p class="al-txt">${sub.texto}</p>
+
+              <div class="al-campo">
+                <span class="al-campo-label">Continuidade</span>
+                <div class="sn-group">
+                  <button class="sn-btn${cont==="sim"?" sn-sim":""}" ${dis} data-alinea="${sub.id}" data-campo="continuidade" data-valor="sim">✔ Sim</button>
+                  <button class="sn-btn${cont==="nao"?" sn-nao":""}" ${dis} data-alinea="${sub.id}" data-campo="continuidade" data-valor="nao">✘ Não</button>
+                </div>
+              </div>
+
+              <div class="al-campo">
+                <span class="al-campo-label">Adequação</span>
+                <div class="sn-group">
+                  <button class="sn-btn${adeq==="sim"?" sn-sim":""}" ${dis} data-alinea="${sub.id}" data-campo="adequacao" data-valor="sim">✔ Sim</button>
+                  <button class="sn-btn${adeq==="nao"?" sn-nao":""}" ${dis} data-alinea="${sub.id}" data-campo="adequacao" data-valor="nao">✘ Não</button>
+                </div>
+              </div>
+
+              <div class="al-obs-wrap">
+                <label class="al-obs-label" for="obs-${sub.id}">📝 Observação / Evidência</label>
+                <textarea class="al-obs" id="obs-${sub.id}" data-alinea="${sub.id}"
+                  placeholder="Descreva a evidência, justificativa ou contexto desta resposta..."
+                  rows="3" ${soLeitura ? "readonly" : ""}>${obs}</textarea>
+              </div>
+
+              <div class="al-anexo-wrap">
+                <div class="anexo-label">📎 Documentos Comprobatórios</div>
+                <div class="anexos-lista" id="anexos-${sub.id}">
+                  ${renderAnexosHtml(sub.id, anexos, soLeitura)}
+                </div>
+                ${!soLeitura ? `
+                <label class="btn-anexo-add" for="file-${sub.id}">
+                  ＋ Anexar Documento
+                  <input type="file" id="file-${sub.id}" data-alinea="${sub.id}"
+                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" multiple style="display:none"/>
+                </label>
+                <span class="anexo-hint">PDF, DOC, DOCX, PNG, JPG · máx. 500 KB por arquivo</span>` : ""}
+              </div>
+            </div>
+          </div>`;
+        });
+
+        html += `</div>`; // fecha al-grupo
+
+      } else {
+        // ── ESTRUTURA LEGADA: alínea simples (letras A, B, C...)
+        const r        = respostasSetor[al.id] || {};
+        const cont     = r.continuidade ?? null;
+        const adeq     = r.adequacao    ?? null;
+        const obs      = r.obs          ?? "";
+        const anexos   = r.anexos       || [];
+        const respondida = isRespondida(r);
+
+        html += `
         <div class="alinea${respondida ? " al-ok" : ""}" id="al-${al.id}">
           <div class="al-idx">${String.fromCharCode(65+ai)}</div>
           <div class="al-body">
@@ -553,6 +782,7 @@ function renderForm() {
 
           </div>
         </div>`;
+      }
     });
     html += `</div></div>`;
   });
@@ -644,9 +874,20 @@ function getAlineasNao() {
   const resultado = [];
   getDimensoesParaSetor(currentSetorId).forEach(dim => {
     dim.alineas.forEach(al => {
-      const r = respostasSetor[al.id] || {};
-      if (r.continuidade === "nao" || r.adequacao === "nao") {
-        resultado.push({ al, dim, r });
+      if (temSubitens(al)) {
+        // Para alíneas com subitens, verifica cada subitem individualmente
+        al.subitens.forEach(sub => {
+          const r = respostasSetor[sub.id] || {};
+          if (r.continuidade === "nao" || r.adequacao === "nao") {
+            // Passa o subitem como se fosse a alínea para o PMGG, mas guarda referência à letra-pai
+            resultado.push({ al: { ...sub, texto: sub.texto }, dim, r, letraPai: al, subNum: sub.num });
+          }
+        });
+      } else {
+        const r = respostasSetor[al.id] || {};
+        if (r.continuidade === "nao" || r.adequacao === "nao") {
+          resultado.push({ al, dim, r });
+        }
       }
     });
   });
@@ -693,7 +934,7 @@ function renderPMGG(setor) {
 
         <!-- Seção GUT -->
         <div class="pmgg-section-title">Oportunidade de Melhoria</div>
-        <div class="pmgg-field">
+        <div class="pmgg-field-oportunidade">
           <label>Descrição da oportunidade de melhoria</label>
           <textarea class="pmgg-textarea" id="op-${al.id}" data-alid="${al.id}" data-campo="oportunidade"
             placeholder="Descreva qual melhoria deve ser realizada para esta alínea..." rows="3"
@@ -1306,6 +1547,10 @@ function renderEditorAlineas() {
   let editDims = JSON.parse(JSON.stringify(DIMENSOES));
 
   function buildDimHtml(dim, di) {
+    // Conta total de itens respondíveis para exibir no badge
+    const totalItens = dim.alineas.reduce((s, al) =>
+      s + (temSubitens(al) ? al.subitens.length : 1), 0);
+
     return `<div class="ed-dim-card" data-di="${di}">
       <div class="edc-head">
         <div class="edc-hrow">
@@ -1317,18 +1562,41 @@ function renderEditorAlineas() {
             <button class="edc-del" data-di="${di}">🗑</button>
           </div>
         </div>
-        <div class="edc-badge">${dim.id} · ${dim.alineas.length} alínea${dim.alineas.length!==1?"s":""}</div>
+        <div class="edc-badge">${dim.id} · ${dim.alineas.length} letra${dim.alineas.length!==1?"s":""} · ${totalItens} item${totalItens!==1?"s":""}</div>
       </div>
       <div class="ed-alineas">
-        ${dim.alineas.map((al,ai) => `
-          <div class="eda-row" data-di="${di}" data-ai="${ai}">
-            <span class="eda-idx">${String.fromCharCode(65+ai)}</span>
-            <div class="eda-mid">
-              <input class="eda-inp" value="${al.texto.replace(/"/g,"&quot;")}" data-di="${di}" data-ai="${ai}" placeholder="Texto da alínea"/>
-              <span class="eda-id">${al.id}</span>
-            </div>
-            <button class="eda-del" data-di="${di}" data-ai="${ai}">✕</button>
-          </div>`).join("")}
+        ${dim.alineas.map((al,ai) => {
+          const letraChar = String.fromCharCode(97+ai);
+          if (temSubitens(al)) {
+            // Alínea com subitens — mostra a letra e seus subitens numerados
+            return `
+            <div class="eda-grupo" data-di="${di}" data-ai="${ai}">
+              <div class="eda-grupo-hdr">
+                <span class="eda-letra">${letraChar})</span>
+                <span class="eda-grupo-titulo" title="${al.titulo}">${al.titulo}</span>
+                <span class="eda-id">${al.id}</span>
+              </div>
+              ${al.subitens.map((sub,si) => `
+              <div class="eda-subrow">
+                <span class="eda-sub-num">${sub.num}</span>
+                <span class="eda-sub-txt" title="${sub.texto}">${sub.texto}</span>
+                <span class="eda-id">${sub.id}</span>
+              </div>`).join("")}
+            </div>`;
+          } else {
+            // Alínea simples (legada)
+            const textoSafe = (al.texto||"").replace(/"/g,"&quot;");
+            return `
+            <div class="eda-row" data-di="${di}" data-ai="${ai}">
+              <span class="eda-idx">${String.fromCharCode(65+ai)}</span>
+              <div class="eda-mid">
+                <input class="eda-inp" value="${textoSafe}" data-di="${di}" data-ai="${ai}" placeholder="Texto da alínea"/>
+                <span class="eda-id">${al.id}</span>
+              </div>
+              <button class="eda-del" data-di="${di}" data-ai="${ai}">✕</button>
+            </div>`;
+          }
+        }).join("")}
         <button class="btn-add-al" data-di="${di}">＋ Adicionar alínea</button>
       </div>
     </div>`;
@@ -1339,7 +1607,10 @@ function renderEditorAlineas() {
       inp.addEventListener("change", () => { editDims[+inp.dataset.di][inp.dataset.f] = inp.value; });
     });
     document.querySelectorAll(".eda-inp").forEach(inp => {
-      inp.addEventListener("change", () => { editDims[+inp.dataset.di].alineas[+inp.dataset.ai].texto = inp.value; });
+      inp.addEventListener("change", () => {
+        const al = editDims[+inp.dataset.di].alineas[+inp.dataset.ai];
+        if (!temSubitens(al)) al.texto = inp.value;
+      });
     });
     document.querySelectorAll(".eda-del").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -1387,7 +1658,10 @@ function renderEditorAlineas() {
       document.querySelectorAll(".eda-inp").forEach(inp => { editDims[+inp.dataset.di].alineas[+inp.dataset.ai].texto=inp.value; });
       for (const dim of editDims) {
         if (!dim.titulo.trim()) { toast("Todas as dimensões precisam ter título.","warn"); return; }
-        for (const al of dim.alineas) { if (!al.texto.trim()) { toast(`Preencha todas as alíneas. (${dim.titulo})`,"warn"); return; } }
+        for (const al of dim.alineas) {
+          if (temSubitens(al)) continue; // subitens têm estrutura própria, não validamos aqui
+          if (!(al.texto||"").trim()) { toast(`Preencha todas as alíneas. (${dim.titulo})`,"warn"); return; }
+        }
       }
       const btn=document.getElementById("btnEdSave");
       btn.textContent="Salvando..."; btn.disabled=true;
@@ -1433,8 +1707,11 @@ function renderEditorSetores() {
 
   function getAtivas(sid) {
     const cfg = setorConfig[sid];
+    const todosIds = DIMENSOES.flatMap(d => d.alineas.flatMap(al =>
+      temSubitens(al) ? al.subitens.map(s => s.id) : [al.id]
+    ));
     if (!cfg || !cfg.alineasAtivas || cfg.alineasAtivas.length === 0)
-      return new Set(DIMENSOES.flatMap(d => d.alineas.map(a => a.id)));
+      return new Set(todosIds);
     return new Set(cfg.alineasAtivas);
   }
 
@@ -1458,7 +1735,7 @@ function renderEditorSetores() {
           <span class="scp-sig">${setor.sigla}</span>
           <div>
             <div class="scp-nome">${setor.nome}</div>
-            <div class="scp-ct" id="ativasCount">${ativas.size} de ${totalG} alíneas selecionadas</div>
+            <div class="scp-ct" id="ativasCount">${ativas.size} de ${DIMENSOES.reduce((a,d)=>a+d.alineas.reduce((s,al)=>s+(temSubitens(al)?al.subitens.length:1),0),0)} alíneas selecionadas</div>
           </div>
         </div>
         <div class="scp-actions">
@@ -1480,12 +1757,32 @@ function renderEditorSetores() {
               <span class="scp-dim-ct" id="dimct-${di}">${qAtivas}/${dim.alineas.length}</span>
             </div>
             <div class="scp-alineas">
-              ${dim.alineas.map((al, ai) => `
-                <label class="scp-al-row${ativas.has(al.id)?" scp-al-on":""}">
-                  <input type="checkbox" class="ck-al" data-alid="${al.id}" data-di="${di}" ${ativas.has(al.id)?"checked":""}/>
-                  <span class="scp-al-idx">${String.fromCharCode(65+ai)}</span>
-                  <span class="scp-al-txt">${al.texto}</span>
-                </label>`).join("")}
+              ${dim.alineas.map((al, ai) => {
+                const letraChar = String.fromCharCode(97+ai);
+                if (temSubitens(al)) {
+                  // Mostra o título da letra como cabeçalho e cada subitem como checkbox
+                  return `
+                  <div class="scp-al-grupo">
+                    <div class="scp-al-grupo-hdr">
+                      <span class="scp-al-letra">${letraChar})</span>
+                      <span class="scp-al-grupo-titulo">${al.titulo}</span>
+                    </div>
+                    ${al.subitens.map(sub => `
+                    <label class="scp-al-row scp-al-sub${ativas.has(sub.id)?" scp-al-on":""}">
+                      <input type="checkbox" class="ck-al" data-alid="${sub.id}" data-di="${di}" ${ativas.has(sub.id)?"checked":""}/>
+                      <span class="scp-al-idx">${sub.num}</span>
+                      <span class="scp-al-txt">${sub.texto}</span>
+                    </label>`).join("")}
+                  </div>`;
+                } else {
+                  return `
+                  <label class="scp-al-row${ativas.has(al.id)?" scp-al-on":""}">
+                    <input type="checkbox" class="ck-al" data-alid="${al.id}" data-di="${di}" ${ativas.has(al.id)?"checked":""}/>
+                    <span class="scp-al-idx">${String.fromCharCode(65+ai)}</span>
+                    <span class="scp-al-txt">${(al.texto||al.titulo||"")}</span>
+                  </label>`;
+                }
+              }).join("")}
             </div>
           </div>`;
         }).join("")}
@@ -1505,19 +1802,25 @@ function renderEditorSetores() {
       ck.addEventListener("change", () => {
         const di=+ck.dataset.di, dim=DIMENSOES[di];
         dim.alineas.forEach(al => {
-          if (ck.checked) ativas.add(al.id); else ativas.delete(al.id);
-          const c = document.querySelector(`.ck-al[data-alid="${al.id}"]`);
-          if (c) { c.checked=ck.checked; c.closest(".scp-al-row").classList.toggle("scp-al-on",ck.checked); }
+          const ids = temSubitens(al) ? al.subitens.map(s=>s.id) : [al.id];
+          ids.forEach(id => {
+            if (ck.checked) ativas.add(id); else ativas.delete(id);
+            const c = document.querySelector(`.ck-al[data-alid="${id}"]`);
+            if (c) { c.checked=ck.checked; c.closest(".scp-al-row")?.classList.toggle("scp-al-on",ck.checked); }
+          });
         });
         ck.indeterminate=false; updateCount(ativas); updateDimCount(di,ativas);
       });
     });
     document.getElementById("btnSelAll").addEventListener("click", () => {
-      DIMENSOES.forEach(d => d.alineas.forEach(al => ativas.add(al.id))); refreshPanel(ativas);
+      DIMENSOES.forEach(d => d.alineas.forEach(al => {
+        if (temSubitens(al)) al.subitens.forEach(s => ativas.add(s.id));
+        else ativas.add(al.id);
+      })); refreshPanel(ativas);
     });
     document.getElementById("btnSelNone").addEventListener("click", () => { ativas.clear(); refreshPanel(ativas); });
     document.getElementById("btnSalvarSetor").addEventListener("click", async () => {
-      const totalG = DIMENSOES.reduce((a,d) => a+d.alineas.length, 0);
+      const totalG = DIMENSOES.reduce((a,d)=>a+d.alineas.reduce((s,al)=>s+(temSubitens(al)?al.subitens.length:1),0),0);
       if (ativas.size === totalG) delete setorConfig[setorSel];
       else setorConfig[setorSel] = { alineasAtivas: [...ativas] };
       const btn=document.getElementById("btnSalvarSetor");
@@ -1538,17 +1841,27 @@ function renderEditorSetores() {
   function updateDimCk(di, ativas) {
     const dim=DIMENSOES[di], ck=document.querySelector(`.ck-dim[data-di="${di}"]`);
     if (!ck) return;
-    const q = dim.alineas.filter(al => ativas.has(al.id)).length;
-    ck.checked=q===dim.alineas.length; ck.indeterminate=q>0&&q<dim.alineas.length;
+    const total = dim.alineas.reduce((s,al)=>s+(temSubitens(al)?al.subitens.length:1),0);
+    const atv   = dim.alineas.reduce((s,al)=>{
+      if (temSubitens(al)) return s + al.subitens.filter(sub=>ativas.has(sub.id)).length;
+      return s + (ativas.has(al.id)?1:0);
+    },0);
+    ck.checked=atv===total; ck.indeterminate=atv>0&&atv<total;
     updateDimCount(di, ativas);
   }
   function updateDimCount(di, ativas) {
     const dim=DIMENSOES[di], el=document.getElementById(`dimct-${di}`);
-    if (el) el.textContent = `${dim.alineas.filter(al=>ativas.has(al.id)).length}/${dim.alineas.length}`;
+    if (!el) return;
+    const total = dim.alineas.reduce((s,al)=>s+(temSubitens(al)?al.subitens.length:1),0);
+    const atv   = dim.alineas.reduce((s,al)=>{
+      if (temSubitens(al)) return s + al.subitens.filter(sub=>ativas.has(sub.id)).length;
+      return s + (ativas.has(al.id)?1:0);
+    },0);
+    el.textContent = `${atv}/${total}`;
   }
   function updateCount(ativas) {
     const el=document.getElementById("ativasCount");
-    const total=DIMENSOES.reduce((a,d)=>a+d.alineas.length,0);
+    const total=DIMENSOES.reduce((a,d)=>a+d.alineas.reduce((s,al)=>s+(temSubitens(al)?al.subitens.length:1),0),0);
     if (el) el.textContent = `${ativas.size} de ${total} alíneas selecionadas`;
   }
   function refreshPanel(ativas) {
