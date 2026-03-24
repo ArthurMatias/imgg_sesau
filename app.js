@@ -840,29 +840,14 @@ function renderForm() {
     });
   });
 
-  document.querySelectorAll("input[type=file][data-alinea]").forEach(input => {
-    input.addEventListener("change", async () => {
-      const alId  = input.dataset.alinea;
-      const files = Array.from(input.files);
-      if (!files.length) return;
-      const MAX = 500 * 1024;
-      for (const file of files) {
-        if (file.size > MAX) { toast(`"${file.name}" excede 500 KB. Ignorado.`, "warn"); continue; }
-        const base64 = await fileToBase64(file);
-        if (!respostasSetor[alId]) respostasSetor[alId] = { continuidade:null, adequacao:null, obs:"", anexos:[], ts: new Date().toISOString() };
-        if (!respostasSetor[alId].anexos) respostasSetor[alId].anexos = [];
-        respostasSetor[alId].anexos.push({ nome: file.name, tipo: file.type, base64 });
-        const lista = document.getElementById("anexos-"+alId);
-        if (lista) lista.innerHTML = renderAnexosHtml(alId, respostasSetor[alId].anexos, false);
-        bindAnexoRemove(alId);
-        await saveResposta(currentSetorId, alId, "anexos", respostasSetor[alId].anexos);
-        toast(`"${file.name}" anexado! ✅`, "success");
-      }
-      input.value = "";
-    });
-  });
-
-  dimsSetor.forEach(dim => dim.alineas.forEach(al => bindAnexoRemove(al.id)));
+  // Bind file inputs e botões de remoção para todas as alíneas e subitens
+  dimsSetor.forEach(dim => dim.alineas.forEach(al => {
+    if (temSubitens(al)) {
+      al.subitens.forEach(sub => { bindFileInput(sub.id); bindAnexoRemove(sub.id); });
+    } else {
+      bindFileInput(al.id); bindAnexoRemove(al.id);
+    }
+  }));
   document.getElementById("btnSubmit")?.addEventListener("click", () => submitForm(currentSetorId));
 }
 
@@ -1139,9 +1124,35 @@ function bindAnexoRemove(alId) {
       respostasSetor[alId].anexos.splice(i, 1);
       lista.innerHTML = renderAnexosHtml(alId, respostasSetor[alId].anexos, false);
       bindAnexoRemove(alId);
+      // Rebind file input após re-render da lista de anexos
+      bindFileInput(alId);
       await saveResposta(currentSetorId, alId, "anexos", respostasSetor[alId].anexos);
-      if (nome) toast(`"${nome}" removido.`, "info");
+      if (nome) toast(`"${nome}" removido. 🗑️`, "info");
     });
+  });
+}
+
+function bindFileInput(alId) {
+  const fileInput = document.getElementById("file-"+alId);
+  if (!fileInput || fileInput._bound) return;
+  fileInput._bound = true;
+  fileInput.addEventListener("change", async () => {
+    const files = Array.from(fileInput.files);
+    if (!files.length) return;
+    const MAX = 500 * 1024;
+    for (const file of files) {
+      if (file.size > MAX) { toast(`"${file.name}" excede 500 KB. Ignorado.`, "warn"); continue; }
+      const base64 = await fileToBase64(file);
+      if (!respostasSetor[alId]) respostasSetor[alId] = { continuidade:null, adequacao:null, obs:"", anexos:[], ts: new Date().toISOString() };
+      if (!respostasSetor[alId].anexos) respostasSetor[alId].anexos = [];
+      respostasSetor[alId].anexos.push({ nome: file.name, tipo: file.type, base64 });
+      const l = document.getElementById("anexos-"+alId);
+      if (l) l.innerHTML = renderAnexosHtml(alId, respostasSetor[alId].anexos, false);
+      bindAnexoRemove(alId);
+      await saveResposta(currentSetorId, alId, "anexos", respostasSetor[alId].anexos);
+      toast(`"${file.name}" anexado! ✅`, "success");
+    }
+    fileInput.value = "";
   });
 }
 
