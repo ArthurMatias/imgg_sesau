@@ -657,6 +657,27 @@ function renderForm() {
     <div class="form-head">
       <h1 class="fh-title">Avaliação IMGG ${anoSelecionado}</h1>
       <p class="fh-desc">Para cada alínea, indique se há <strong>Continuidade</strong> e <strong>Adequação</strong> da prática. Você também pode adicionar uma observação e anexar documentos comprobatórios.${soLeitura ? " <strong style='color:#b91c1c'>Avaliação encerrada — somente leitura.</strong>" : " As respostas são salvas automaticamente."}</p>
+    </div>
+
+    <div class="dim-filtro-wrap">
+      <span class="dim-filtro-label">🔍 Ir para dimensão</span>
+      <div class="dim-filtro-dropdown" id="dimFiltroDropdown">
+        <button class="dim-filtro-trigger" id="dimFiltroTrigger" type="button">
+          <span id="dimFiltroTexto">Todas as dimensões</span>
+          <span class="trigger-seta">▼</span>
+        </button>
+        <div class="dim-filtro-menu" id="dimFiltroMenu">
+          <div class="dim-filtro-opcao ativo" data-dim="todas">
+            <span>📋 Todas as dimensões</span>
+            <span class="opc-check">✔</span>
+          </div>
+          ${dimsSetor.map(d => `
+          <div class="dim-filtro-opcao" data-dim="${d.id}">
+            <span>${d.icone} ${d.titulo}</span>
+            <span class="opc-check">✔</span>
+          </div>`).join("")}
+        </div>
+      </div>
     </div>`;
 
   dimsSetor.forEach((dim, di) => {
@@ -665,7 +686,7 @@ function renderForm() {
     const completa = respDim === totalDim;
 
     html += `
-    <div class="dim-bloco${completa ? " dim-ok" : ""}">
+    <div class="dim-bloco${completa ? " dim-ok" : ""}" data-dim-id="${dim.id}">
       <div class="dim-hdr">
         <span class="dim-ico">${dim.icone}</span>
         <div class="dim-hdr-t">
@@ -697,6 +718,11 @@ function renderForm() {
           const obs      = rs.obs          ?? "";
           const anexos   = rs.anexos       || [];
           const subResp  = isRespondida(rs);
+          const isVP     = dim.id === "D7";
+          const vpTipo   = rs.vpTipo   ?? "";
+          const vpAno    = rs.vpAno    ?? "";
+          const vpMeta   = rs.vpMeta   ?? "";
+          const vpResult = rs.vpResult ?? "";
 
           html += `
           <div class="al-subitem${subResp ? " al-ok" : ""}" id="al-${sub.id}">
@@ -720,6 +746,48 @@ function renderForm() {
                 </div>
               </div>
 
+              ${isVP ? `
+              <div class="vp-extra-wrap">
+                <div class="vp-extra-title">⭐ Dados de Valor Público</div>
+                <div class="vp-extra-row">
+                  <div class="vp-field">
+                    <label class="vp-label">Tipo do Indicador</label>
+                    <div class="vp-tipo-group">
+                      <button class="vp-tipo-btn${vpTipo==="eficiencia"?" vp-tipo-ativo":""}" ${dis}
+                        data-alinea="${sub.id}" data-campo="vpTipo" data-valor="eficiencia">⚡ Eficiência</button>
+                      <button class="vp-tipo-btn${vpTipo==="eficacia"?" vp-tipo-ativo":""}" ${dis}
+                        data-alinea="${sub.id}" data-campo="vpTipo" data-valor="eficacia">🎯 Eficácia</button>
+                    </div>
+                  </div>
+                  <div class="vp-field">
+                    <label class="vp-label" for="vpAno-${sub.id}">Ano de Referência</label>
+                    <select class="vp-select" id="vpAno-${sub.id}" data-alinea="${sub.id}" data-campo="vpAno" ${soLeitura?"disabled":""}>
+                      <option value="">— Selecione —</option>
+                      ${Array.from({length:11},(_,i)=>2020+i).map(y=>`<option value="${y}"${vpAno==y?" selected":""}>${y}</option>`).join("")}
+                    </select>
+                  </div>
+                  <div class="vp-field">
+                    <label class="vp-label" for="vpMeta-${sub.id}">Meta (%)</label>
+                    <div class="vp-pct-wrap">
+                      <input class="vp-pct-inp" type="number" id="vpMeta-${sub.id}" min="0" max="100"
+                        data-alinea="${sub.id}" data-campo="vpMeta"
+                        value="${vpMeta}" placeholder="0" ${soLeitura?"readonly":""}/>
+                      <span class="vp-pct-sym">%</span>
+                    </div>
+                  </div>
+                  <div class="vp-field">
+                    <label class="vp-label" for="vpResult-${sub.id}">Resultado (%)</label>
+                    <div class="vp-pct-wrap">
+                      <input class="vp-pct-inp" type="number" id="vpResult-${sub.id}" min="0" max="999"
+                        data-alinea="${sub.id}" data-campo="vpResult"
+                        value="${vpResult}" placeholder="0" ${soLeitura?"readonly":""}/>
+                      <span class="vp-pct-sym">%</span>
+                      ${vpMeta && vpResult ? `<span class="vp-ating ${+vpResult>= +vpMeta?"vp-ok":"vp-nd"}">${+vpMeta>0?Math.round((+vpResult/+vpMeta)*100):0}% da meta</span>` : ""}
+                    </div>
+                  </div>
+                </div>
+              </div>` : ""}
+
               <div class="al-obs-wrap">
                 <label class="al-obs-label" for="obs-${sub.id}">📝 Observação / Evidência</label>
                 <textarea class="al-obs" id="obs-${sub.id}" data-alinea="${sub.id}"
@@ -738,7 +806,7 @@ function renderForm() {
                   <input type="file" id="file-${sub.id}" data-alinea="${sub.id}"
                     accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" multiple style="display:none"/>
                 </label>
-                <span class="anexo-hint">PDF, DOC, DOCX, PNG, JPG · máx. 500 KB por arquivo</span>` : ""}
+                <span class="anexo-hint">PDF, DOC, DOCX, PNG, JPG · máx. 5 MB por arquivo</span>` : ""}
               </div>
             </div>
           </div>`;
@@ -795,7 +863,7 @@ function renderForm() {
                 <input type="file" id="file-${al.id}" data-alinea="${al.id}"
                   accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" multiple style="display:none"/>
               </label>
-              <span class="anexo-hint">PDF, DOC, DOCX, PNG, JPG · máx. 500 KB por arquivo</span>` : ""}
+              <span class="anexo-hint">PDF, DOC, DOCX, PNG, JPG · máx. 5 MB por arquivo</span>` : ""}
             </div>
 
           </div>
@@ -819,6 +887,58 @@ function renderForm() {
 
   if (soLeitura) return; // sem eventos em modo leitura
 
+  // ── Filtro dropdown — navega por coordenada ────────────────────
+  const trigger = document.getElementById("dimFiltroTrigger");
+  const menu    = document.getElementById("dimFiltroMenu");
+  const texto   = document.getElementById("dimFiltroTexto");
+
+  trigger?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const aberto = menu.classList.toggle("aberto");
+    trigger.classList.toggle("aberto", aberto);
+  });
+
+  document.addEventListener("click", () => {
+    menu?.classList.remove("aberto");
+    trigger?.classList.remove("aberto");
+  }, { capture: false });
+
+  document.querySelectorAll(".dim-filtro-opcao").forEach(opcao => {
+    opcao.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const dimId = opcao.dataset.dim;
+
+      // Marca a opção ativa
+      document.querySelectorAll(".dim-filtro-opcao").forEach(o => o.classList.remove("ativo"));
+      opcao.classList.add("ativo");
+      texto.textContent = opcao.querySelector("span:first-child").textContent.trim();
+
+      // Fecha o menu
+      menu.classList.remove("aberto");
+      trigger.classList.remove("aberto");
+
+      if (dimId === "todas") {
+        // Mostra tudo e vai ao topo do form
+        document.querySelectorAll(".dim-bloco").forEach(b => b.style.display = "");
+        const topo = document.querySelector(".form-wrap");
+        if (topo) window.scrollTo({ top: topo.getBoundingClientRect().top + window.scrollY - 110, behavior: "smooth" });
+      } else {
+        // Mostra todos os blocos (sem esconder)
+        document.querySelectorAll(".dim-bloco").forEach(b => b.style.display = "");
+        // Rola até o bloco alvo pelas coordenadas do elemento
+        const alvo = document.querySelector(`.dim-bloco[data-dim-id="${dimId}"]`);
+        if (alvo) {
+          const y = alvo.getBoundingClientRect().top + window.scrollY - 110;
+          window.scrollTo({ top: y, behavior: "smooth" });
+          // Flash visual para destacar o bloco alvo
+          alvo.style.outline = "2px solid #0369a1";
+          alvo.style.outlineOffset = "2px";
+          setTimeout(() => { alvo.style.outline = ""; alvo.style.outlineOffset = ""; }, 1800);
+        }
+      }
+    });
+  });
+
   document.querySelectorAll(".sn-btn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const alId  = btn.dataset.alinea;
@@ -828,6 +948,59 @@ function renderForm() {
       await saveResposta(currentSetorId, alId, campo, valor);
       renderForm();
       requestAnimationFrame(() => window.scrollTo({ top, behavior:"smooth" }));
+    });
+  });
+
+  // ── Botões de tipo VP (Eficiência / Eficácia) ──────────────────
+  document.querySelectorAll(".vp-tipo-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const alId  = btn.dataset.alinea;
+      const campo = btn.dataset.campo;
+      const valor = btn.dataset.valor;
+      if (!respostasSetor[alId]) respostasSetor[alId] = { continuidade:null, adequacao:null, obs:"", anexos:[], ts: new Date().toISOString() };
+      respostasSetor[alId][campo] = valor;
+      await saveResposta(currentSetorId, alId, campo, valor);
+      // Atualiza visual sem re-renderizar o form inteiro
+      const grupo = btn.closest(".vp-tipo-group");
+      grupo?.querySelectorAll(".vp-tipo-btn").forEach(b => b.classList.toggle("vp-tipo-ativo", b.dataset.valor === valor));
+    });
+  });
+
+  // ── Select de ano VP ───────────────────────────────────────────
+  document.querySelectorAll(".vp-select").forEach(sel => {
+    sel.addEventListener("change", async () => {
+      const alId = sel.dataset.alinea;
+      const campo = sel.dataset.campo;
+      if (!respostasSetor[alId]) respostasSetor[alId] = { continuidade:null, adequacao:null, obs:"", anexos:[], ts: new Date().toISOString() };
+      respostasSetor[alId][campo] = sel.value;
+      await saveResposta(currentSetorId, alId, campo, sel.value);
+    });
+  });
+
+  // ── Inputs de % VP (meta / resultado) ─────────────────────────
+  document.querySelectorAll(".vp-pct-inp").forEach(inp => {
+    inp.addEventListener("blur", async () => {
+      const alId = inp.dataset.alinea;
+      const campo = inp.dataset.campo;
+      const val = inp.value;
+      if (!respostasSetor[alId]) respostasSetor[alId] = { continuidade:null, adequacao:null, obs:"", anexos:[], ts: new Date().toISOString() };
+      respostasSetor[alId][campo] = val;
+      await saveResposta(currentSetorId, alId, campo, val);
+      // Atualiza indicador "X% da meta" sem re-render completo
+      const vpMeta   = respostasSetor[alId].vpMeta   || "";
+      const vpResult = respostasSetor[alId].vpResult  || "";
+      const atingEl  = inp.closest(".vp-pct-wrap")?.querySelector(".vp-ating");
+      if (vpMeta && vpResult) {
+        const pct = +vpMeta > 0 ? Math.round((+vpResult / +vpMeta) * 100) : 0;
+        const ok  = +vpResult >= +vpMeta;
+        if (atingEl) { atingEl.textContent = `${pct}% da meta`; atingEl.className = `vp-ating ${ok?"vp-ok":"vp-nd"}`; }
+        else {
+          const span = document.createElement("span");
+          span.className = `vp-ating ${ok?"vp-ok":"vp-nd"}`;
+          span.textContent = `${pct}% da meta`;
+          inp.closest(".vp-pct-wrap")?.appendChild(span);
+        }
+      }
     });
   });
 
@@ -1139,9 +1312,9 @@ function bindFileInput(alId) {
   fileInput.addEventListener("change", async () => {
     const files = Array.from(fileInput.files);
     if (!files.length) return;
-    const MAX = 500 * 1024;
+    const MAX = 5 * 1024 * 1024;
     for (const file of files) {
-      if (file.size > MAX) { toast(`"${file.name}" excede 500 KB. Ignorado.`, "warn"); continue; }
+      if (file.size > MAX) { toast(`"${file.name}" excede 5 MB. Ignorado.`, "warn"); continue; }
       const base64 = await fileToBase64(file);
       if (!respostasSetor[alId]) respostasSetor[alId] = { continuidade:null, adequacao:null, obs:"", anexos:[], ts: new Date().toISOString() };
       if (!respostasSetor[alId].anexos) respostasSetor[alId].anexos = [];
