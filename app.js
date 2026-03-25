@@ -716,17 +716,14 @@ function bindVpEntrada(alId, soLeitura) {
   const wrap = document.getElementById("vpWrap-" + alId);
   if (!wrap || soLeitura) return;
 
-  // Botão ＋ adicionar — usa onclick para evitar acúmulo de listeners
-  const addBtn = wrap.querySelector(".vp-add-btn");
-  if (addBtn) {
-    addBtn.onclick = async () => {
-      if (!respostasSetor[alId]) respostasSetor[alId] = { continuidade:null, adequacao:null, obs:"", anexos:[], ts: new Date().toISOString() };
-      if (!Array.isArray(respostasSetor[alId].vpEntradas)) respostasSetor[alId].vpEntradas = [{ desc:"", tipo:"", ano:"", meta:"", result:"" }];
-      respostasSetor[alId].vpEntradas.push({ desc:"", tipo:"", ano:"", meta:"", result:"" });
-      refreshVpLista(alId, soLeitura);
-      await saveVpEntradas(alId);
-    };
-  }
+  // Botão ＋ adicionar
+  wrap.querySelector(".vp-add-btn")?.addEventListener("click", async () => {
+    if (!respostasSetor[alId]) respostasSetor[alId] = { continuidade:null, adequacao:null, obs:"", anexos:[], ts: new Date().toISOString() };
+    if (!Array.isArray(respostasSetor[alId].vpEntradas)) respostasSetor[alId].vpEntradas = [{ desc:"", tipo:"", ano:"", meta:"", result:"" }];
+    respostasSetor[alId].vpEntradas.push({ desc:"", tipo:"", ano:"", meta:"", result:"" });
+    refreshVpLista(alId, soLeitura);
+    await saveVpEntradas(alId);
+  });
 
   const lista = document.getElementById("vpLista-" + alId);
   if (!lista) return;
@@ -917,7 +914,7 @@ function renderForm() {
               ${isVP ? `
               <div class="vp-extra-wrap" id="vpWrap-${sub.id}">
                 <div class="vp-header-row">
-                  <span class="vp-extra-title">Indicadores Cadastrados</span>
+                  <span class="vp-extra-title">Dados de Valor Público</span>
                   ${!soLeitura ? `<button class="vp-add-btn" data-alinea="${sub.id}" type="button" title="Adicionar indicador">＋ Adicionar indicador</button>` : ""}
                 </div>
                 <div class="vp-entradas-lista" id="vpLista-${sub.id}">
@@ -1853,7 +1850,6 @@ function renderEditorAlineas() {
   let editDims = JSON.parse(JSON.stringify(DIMENSOES));
 
   function buildDimHtml(dim, di) {
-    // Conta total de itens respondíveis para exibir no badge
     const totalItens = dim.alineas.reduce((s, al) =>
       s + (temSubitens(al) ? al.subitens.length : 1), 0);
 
@@ -1871,26 +1867,35 @@ function renderEditorAlineas() {
         <div class="edc-badge">${dim.id} · ${dim.alineas.length} letra${dim.alineas.length!==1?"s":""} · ${totalItens} item${totalItens!==1?"s":""}</div>
       </div>
       <div class="ed-alineas">
-        ${dim.alineas.map((al,ai) => {
-          const letraChar = String.fromCharCode(97+ai);
+        ${dim.alineas.map((al, ai) => {
+          const letraChar = String.fromCharCode(97 + ai);
           if (temSubitens(al)) {
-            // Alínea com subitens — mostra a letra e seus subitens numerados
+            // ── Alínea moderna com subitens ──────────────────────────
+            const tituloSafe = (al.titulo||"").replace(/"/g,"&quot;");
             return `
             <div class="eda-grupo" data-di="${di}" data-ai="${ai}">
               <div class="eda-grupo-hdr">
                 <span class="eda-letra">${letraChar})</span>
-                <span class="eda-grupo-titulo" title="${al.titulo}">${al.titulo}</span>
+                <input class="eda-grupo-titulo-inp" value="${tituloSafe}" data-di="${di}" data-ai="${ai}" placeholder="Título da letra ${letraChar})"/>
                 <span class="eda-id">${al.id}</span>
+                <button class="eda-del-letra" data-di="${di}" data-ai="${ai}" title="Excluir letra ${letraChar}) inteira">🗑</button>
               </div>
-              ${al.subitens.map((sub,si) => `
-              <div class="eda-subrow">
-                <span class="eda-sub-num">${sub.num}</span>
-                <span class="eda-sub-txt" title="${sub.texto}">${sub.texto}</span>
-                <span class="eda-id">${sub.id}</span>
-              </div>`).join("")}
+              <div class="eda-subitens" data-di="${di}" data-ai="${ai}">
+                ${al.subitens.map((sub, si) => {
+                  const subTxtSafe = (sub.texto||"").replace(/"/g,"&quot;");
+                  return `
+                  <div class="eda-subrow" data-di="${di}" data-ai="${ai}" data-si="${si}">
+                    <span class="eda-sub-num">${sub.num}</span>
+                    <input class="eda-sub-inp" value="${subTxtSafe}" data-di="${di}" data-ai="${ai}" data-si="${si}" placeholder="Texto do item ${sub.num}"/>
+                    <span class="eda-id">${sub.id}</span>
+                    <button class="eda-del-sub" data-di="${di}" data-ai="${ai}" data-si="${si}" title="Excluir item ${sub.num}">✕</button>
+                  </div>`;
+                }).join("")}
+              </div>
+              <button class="btn-add-sub" data-di="${di}" data-ai="${ai}">＋ Adicionar item</button>
             </div>`;
           } else {
-            // Alínea simples (legada)
+            // ── Alínea simples (legada) ───────────────────────────────
             const textoSafe = (al.texto||"").replace(/"/g,"&quot;");
             return `
             <div class="eda-row" data-di="${di}" data-ai="${ai}">
@@ -1903,70 +1908,158 @@ function renderEditorAlineas() {
             </div>`;
           }
         }).join("")}
-        <button class="btn-add-al" data-di="${di}">＋ Adicionar alínea</button>
+        <button class="btn-add-al" data-di="${di}">＋ Adicionar letra</button>
       </div>
     </div>`;
   }
 
   function rebind() {
     document.querySelectorAll(".ed-ico-inp,.ed-titulo-inp").forEach(inp => {
-      inp.addEventListener("change", () => { editDims[+inp.dataset.di][inp.dataset.f] = inp.value; });
+      inp.onchange = () => { editDims[+inp.dataset.di][inp.dataset.f] = inp.value; };
     });
+
+    // Título editável de alínea com subitens
+    document.querySelectorAll(".eda-grupo-titulo-inp").forEach(inp => {
+      inp.onchange = () => {
+        const al = editDims[+inp.dataset.di].alineas[+inp.dataset.ai];
+        al.titulo = inp.value;
+      };
+    });
+
+    // Texto de subitem editável
+    document.querySelectorAll(".eda-sub-inp").forEach(inp => {
+      inp.onchange = () => {
+        const al = editDims[+inp.dataset.di].alineas[+inp.dataset.ai];
+        if (temSubitens(al)) al.subitens[+inp.dataset.si].texto = inp.value;
+      };
+    });
+
+    // Alínea simples (legada)
     document.querySelectorAll(".eda-inp").forEach(inp => {
-      inp.addEventListener("change", () => {
+      inp.onchange = () => {
         const al = editDims[+inp.dataset.di].alineas[+inp.dataset.ai];
         if (!temSubitens(al)) al.texto = inp.value;
-      });
+      };
     });
+
+    // Excluir letra inteira (alínea com subitens)
+    document.querySelectorAll(".eda-del-letra").forEach(btn => {
+      btn.onclick = () => {
+        const di=+btn.dataset.di, ai=+btn.dataset.ai;
+        const dim = editDims[di];
+        if (dim.alineas.length <= 1) { toast("A dimensão precisa de pelo menos 1 alínea.","warn"); return; }
+        const letraChar = String.fromCharCode(97+ai);
+        if (!confirm(`Remover a letra "${letraChar})" e todos os seus itens?`)) return;
+        dim.alineas.splice(ai, 1); reindexAlineas(dim); rerender();
+      };
+    });
+
+    // Excluir subitem individual
+    document.querySelectorAll(".eda-del-sub").forEach(btn => {
+      btn.onclick = () => {
+        const di=+btn.dataset.di, ai=+btn.dataset.ai, si=+btn.dataset.si;
+        const al = editDims[di].alineas[ai];
+        if (!temSubitens(al)) return;
+        if (al.subitens.length <= 1) { toast("A letra precisa de pelo menos 1 item.","warn"); return; }
+        al.subitens.splice(si, 1); reindexSubitens(editDims[di], ai); rerender();
+      };
+    });
+
+    // Excluir alínea simples (legada)
     document.querySelectorAll(".eda-del").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.onclick = () => {
         const di=+btn.dataset.di, ai=+btn.dataset.ai;
         if (editDims[di].alineas.length<=1){toast("A dimensão precisa de pelo menos 1 alínea.","warn");return;}
         editDims[di].alineas.splice(ai,1); reindexAlineas(editDims[di]); rerender();
-      });
+      };
     });
-    document.querySelectorAll(".btn-add-al").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const di=+btn.dataset.di, dim=editDims[di];
-        dim.alineas.push({ id:`${dim.id}${String.fromCharCode(97+dim.alineas.length)}`, texto:"" });
+
+    // Adicionar subitem a uma letra existente
+    document.querySelectorAll(".btn-add-sub").forEach(btn => {
+      btn.onclick = () => {
+        const di=+btn.dataset.di, ai=+btn.dataset.ai;
+        const al = editDims[di].alineas[ai];
+        if (!temSubitens(al)) return;
+        const next = al.subitens.length + 1;
+        const numStr = String(next).padStart(2,"0");
+        al.subitens.push({ id:`${al.id}${numStr}`, num:numStr, texto:"" });
         rerender();
-        setTimeout(() => { const ins=document.querySelectorAll(`.eda-inp[data-di="${di}"]`); ins[ins.length-1]?.focus(); }, 50);
-      });
+        setTimeout(() => {
+          const inps = document.querySelectorAll(`.eda-sub-inp[data-di="${di}"][data-ai="${ai}"]`);
+          inps[inps.length-1]?.focus();
+        }, 50);
+      };
     });
+
+    // Adicionar nova letra (alínea com subitens)
+    document.querySelectorAll(".btn-add-al").forEach(btn => {
+      btn.onclick = () => {
+        const di=+btn.dataset.di, dim=editDims[di];
+        const novaLetra = String.fromCharCode(97 + dim.alineas.length);
+        const novaId = `${dim.id}${novaLetra}`;
+        dim.alineas.push({
+          id: novaId,
+          letra: novaLetra,
+          titulo: "",
+          subitens: [{ id:`${novaId}01`, num:"01", texto:"" }]
+        });
+        rerender();
+        setTimeout(() => {
+          const inps = document.querySelectorAll(`.eda-grupo-titulo-inp[data-di="${di}"]`);
+          inps[inps.length-1]?.focus();
+        }, 50);
+      };
+    });
+
     document.querySelectorAll(".edc-up").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.onclick = () => {
         const di=+btn.dataset.di; if(di===0)return;
         [editDims[di-1],editDims[di]]=[editDims[di],editDims[di-1]]; reindexDims(); rerender();
-      });
+      };
     });
     document.querySelectorAll(".edc-dn").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.onclick = () => {
         const di=+btn.dataset.di; if(di===editDims.length-1)return;
         [editDims[di],editDims[di+1]]=[editDims[di+1],editDims[di]]; reindexDims(); rerender();
-      });
+      };
     });
     document.querySelectorAll(".edc-del").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.onclick = () => {
         const di=+btn.dataset.di;
         if(editDims.length<=1){toast("O instrumento precisa de pelo menos 1 dimensão.","warn");return;}
         if(!confirm(`Remover a dimensão "${editDims[di].titulo}"?`))return;
         editDims.splice(di,1); reindexDims(); rerender();
-      });
+      };
     });
-    document.getElementById("btnAddDim").addEventListener("click", () => {
+    document.getElementById("btnAddDim").onclick = () => {
       const next=editDims.length+1;
-      editDims.push({ id:`D${next}`, titulo:`Nova Dimensão ${next}`, icone:"📌", alineas:[{id:`D${next}a`,texto:""}] });
+      const novaId=`D${next}`;
+      editDims.push({ id:novaId, titulo:`Nova Dimensão ${next}`, icone:"📌",
+        alineas:[{ id:`${novaId}a`, letra:"a", titulo:"", subitens:[{ id:`${novaId}a01`, num:"01", texto:"" }] }]
+      });
       rerender();
       setTimeout(() => { const ins=document.querySelectorAll(".ed-titulo-inp"); ins[ins.length-1]?.focus(); ins[ins.length-1]?.select(); }, 50);
-    });
-    document.getElementById("btnEdSave").addEventListener("click", async () => {
+    };
+    document.getElementById("btnEdSave").onclick = async () => {
+      // Captura valores atuais dos inputs antes de salvar
       document.querySelectorAll(".ed-ico-inp,.ed-titulo-inp").forEach(inp => { editDims[+inp.dataset.di][inp.dataset.f]=inp.value; });
+      document.querySelectorAll(".eda-grupo-titulo-inp").forEach(inp => { editDims[+inp.dataset.di].alineas[+inp.dataset.ai].titulo=inp.value; });
+      document.querySelectorAll(".eda-sub-inp").forEach(inp => {
+        const al = editDims[+inp.dataset.di].alineas[+inp.dataset.ai];
+        if (temSubitens(al)) al.subitens[+inp.dataset.si].texto=inp.value;
+      });
       document.querySelectorAll(".eda-inp").forEach(inp => { editDims[+inp.dataset.di].alineas[+inp.dataset.ai].texto=inp.value; });
       for (const dim of editDims) {
         if (!dim.titulo.trim()) { toast("Todas as dimensões precisam ter título.","warn"); return; }
         for (const al of dim.alineas) {
-          if (temSubitens(al)) continue; // subitens têm estrutura própria, não validamos aqui
-          if (!(al.texto||"").trim()) { toast(`Preencha todas as alíneas. (${dim.titulo})`,"warn"); return; }
+          if (temSubitens(al)) {
+            if (!al.titulo?.trim()) { toast(`Preencha o título de todas as letras. (${dim.titulo})`,"warn"); return; }
+            for (const sub of al.subitens) {
+              if (!sub.texto?.trim()) { toast(`Preencha o texto de todos os itens. (${dim.titulo})`,"warn"); return; }
+            }
+          } else {
+            if (!(al.texto||"").trim()) { toast(`Preencha todas as alíneas. (${dim.titulo})`,"warn"); return; }
+          }
         }
       }
       const btn=document.getElementById("btnEdSave");
@@ -1979,15 +2072,27 @@ function renderEditorAlineas() {
         toast("Erro ao salvar. ("+e.code+")","warn"); console.error(e);
         btn.textContent="💾 Salvar e Publicar"; btn.disabled=false;
       }
-    });
-    document.getElementById("btnEdReset").addEventListener("click", () => {
+    };
+    document.getElementById("btnEdReset").onclick = () => {
       if (!confirm("Restaurar alíneas padrão?")) return;
       editDims = JSON.parse(JSON.stringify(DIMENSOES_PADRAO)); rerender();
-    });
+    };
   }
 
   function reindexDims() { editDims.forEach((dim,i) => { dim.id=`D${i+1}`; reindexAlineas(dim); }); }
-  function reindexAlineas(dim) { dim.alineas.forEach((al,ai) => { al.id=`${dim.id}${String.fromCharCode(97+ai)}`; }); }
+  function reindexAlineas(dim) {
+    dim.alineas.forEach((al, ai) => {
+      al.id = `${dim.id}${String.fromCharCode(97+ai)}`;
+      if (temSubitens(al)) reindexSubitens(dim, ai);
+    });
+  }
+  function reindexSubitens(dim, ai) {
+    const al = dim.alineas[ai];
+    al.subitens.forEach((sub, si) => {
+      sub.num = String(si+1).padStart(2,"0");
+      sub.id  = `${al.id}${sub.num}`;
+    });
+  }
   function rerender() { document.getElementById("edDims").innerHTML=editDims.map((dim,di)=>buildDimHtml(dim,di)).join(""); rebind(); }
 
   document.getElementById("aMain").innerHTML = `<div class="adm-wrap">

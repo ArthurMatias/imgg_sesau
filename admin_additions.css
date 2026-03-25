@@ -493,6 +493,122 @@
   background: #eff6ff;
 }
 
+/* ── EDITOR: alíneas modernas (com subitens) editáveis ──────── */
+
+/* Cabeçalho da letra no editor: sobrescreve .eda-grupo-hdr para acomodar input */
+.eda-grupo .eda-grupo-hdr {
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+/* Input do título da letra */
+.eda-grupo-titulo-inp {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  padding: 5px 10px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 7px;
+  background: #fff;
+  font-family: 'Sora', sans-serif;
+  min-width: 0;
+  transition: border-color .15s;
+}
+.eda-grupo-titulo-inp:focus {
+  outline: none;
+  border-color: #003d7a;
+  background: #f0f9ff;
+}
+
+/* Botão excluir letra inteira */
+.eda-del-letra {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid #fca5a5;
+  background: #fff;
+  color: #ef4444;
+  border-radius: 7px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+  padding: 0;
+}
+.eda-del-letra:hover { background: #fef2f2; border-color: #ef4444; }
+
+/* Linha de subitem editável */
+.eda-subrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fff;
+}
+.eda-subrow:last-child { border-bottom: none; }
+
+/* Input de texto do subitem */
+.eda-sub-inp {
+  flex: 1;
+  font-size: 12px;
+  color: #374151;
+  padding: 5px 10px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 7px;
+  background: #fafafa;
+  font-family: 'Sora', sans-serif;
+  min-width: 0;
+  transition: border-color .15s, background .15s;
+}
+.eda-sub-inp:focus {
+  outline: none;
+  border-color: #0369a1;
+  background: #fff;
+}
+
+/* Botão excluir subitem */
+.eda-del-sub {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid #fca5a5;
+  background: #fff;
+  color: #ef4444;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+  padding: 0;
+}
+.eda-del-sub:hover { background: #fef2f2; border-color: #ef4444; }
+
+/* Botão adicionar subitem dentro da letra */
+.btn-add-sub {
+  display: block;
+  width: calc(100% - 24px);
+  margin: 6px 12px;
+  padding: 5px 10px;
+  border: 1.5px dashed #bae6fd;
+  background: #f0f9ff;
+  color: #0369a1;
+  border-radius: 7px;
+  font-family: 'Sora', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: all .15s;
+}
+.btn-add-sub:hover { background: #e0f2fe; border-color: #38bdf8; }
+
 /* ── BOTÃO TOGGLE ADMIN ↔ SETOR ─────────────────────────────── */
 .btn-toggle-admin {
   padding: 8px 16px;
