@@ -636,6 +636,174 @@ function renderSetorShell(setor, isAdminToggled = false) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  VALOR PÚBLICO — renderiza uma entrada (card de indicador)
+// ═══════════════════════════════════════════════════════════════
+function renderVpEntradaHtml(alId, idx, entrada, soLeitura) {
+  const { desc="", tipo="", ano="", meta="", result="" } = entrada;
+  const atingPct = (meta && result && +meta > 0) ? Math.round((+result / +meta) * 100) : null;
+  const atingOk  = atingPct !== null && +result >= +meta;
+  return `
+  <div class="vp-entrada" data-idx="${idx}">
+    <div class="vp-entrada-num">${idx + 1}</div>
+    <div class="vp-entrada-body">
+      <div class="vp-field vp-field-desc">
+        <label class="vp-label">Descrição do Indicador</label>
+        <input class="vp-desc-inp" type="text"
+          placeholder="Ex.: Taxa de cobertura vacinal, Tempo médio de atendimento..."
+          value="${desc.replace(/"/g,'&quot;')}"
+          data-alinea="${alId}" data-idx="${idx}" data-subcampo="desc"
+          ${soLeitura ? "readonly" : ""}/>
+      </div>
+      <div class="vp-entrada-row">
+        <div class="vp-field">
+          <label class="vp-label">Tipo</label>
+          <div class="vp-tipo-group">
+            <button class="vp-tipo-btn${tipo==="eficiencia"?" vp-tipo-ativo":""}" ${soLeitura?"disabled":""}
+              data-alinea="${alId}" data-idx="${idx}" data-subcampo="tipo" data-valor="eficiencia">⚡ Eficiência</button>
+            <button class="vp-tipo-btn${tipo==="eficacia"?" vp-tipo-ativo":""}" ${soLeitura?"disabled":""}
+              data-alinea="${alId}" data-idx="${idx}" data-subcampo="tipo" data-valor="eficacia">🎯 Eficácia</button>
+          </div>
+        </div>
+        <div class="vp-field">
+          <label class="vp-label">Ano de Referência</label>
+          <select class="vp-select" data-alinea="${alId}" data-idx="${idx}" data-subcampo="ano" ${soLeitura?"disabled":""}>
+            <option value="">— Ano —</option>
+            ${Array.from({length:11},(_,i)=>2020+i).map(y=>`<option value="${y}"${ano==y?" selected":""}>${y}</option>`).join("")}
+          </select>
+        </div>
+        <div class="vp-field">
+          <label class="vp-label">Meta (%)</label>
+          <div class="vp-pct-wrap">
+            <input class="vp-pct-inp" type="number" min="0" max="100"
+              data-alinea="${alId}" data-idx="${idx}" data-subcampo="meta"
+              value="${meta}" placeholder="0" ${soLeitura?"readonly":""}/>
+            <span class="vp-pct-sym">%</span>
+          </div>
+        </div>
+        <div class="vp-field">
+          <label class="vp-label">Resultado (%)</label>
+          <div class="vp-pct-wrap">
+            <input class="vp-pct-inp" type="number" min="0" max="999"
+              data-alinea="${alId}" data-idx="${idx}" data-subcampo="result"
+              value="${result}" placeholder="0" ${soLeitura?"readonly":""}/>
+            <span class="vp-pct-sym">%</span>
+            ${atingPct !== null ? `<span class="vp-ating ${atingOk?"vp-ok":"vp-nd"}">${atingPct}% da meta</span>` : ""}
+          </div>
+        </div>
+      </div>
+    </div>
+    ${!soLeitura ? `<button class="vp-rm-btn" data-alinea="${alId}" data-idx="${idx}" title="Remover indicador">×</button>` : ""}
+  </div>`;
+}
+
+// ─── Salva o array vpEntradas no Firestore ──────────────────────
+async function saveVpEntradas(alId) {
+  if (!respostasSetor[alId]) respostasSetor[alId] = { continuidade:null, adequacao:null, obs:"", anexos:[], ts: new Date().toISOString() };
+  await saveResposta(currentSetorId, alId, "vpEntradas", respostasSetor[alId].vpEntradas || []);
+}
+
+// ─── Re-renderiza apenas a lista VP de uma alínea ───────────────
+function refreshVpLista(alId, soLeitura) {
+  const lista = document.getElementById("vpLista-" + alId);
+  if (!lista) return;
+  const entradas = respostasSetor[alId]?.vpEntradas || [{ desc:"", tipo:"", ano:"", meta:"", result:"" }];
+  lista.innerHTML = entradas.map((e, i) => renderVpEntradaHtml(alId, i, e, soLeitura)).join("");
+  bindVpEntrada(alId, soLeitura);
+}
+
+// ─── Bind de todos os eventos dentro de uma entrada VP ─────────
+function bindVpEntrada(alId, soLeitura) {
+  const wrap = document.getElementById("vpWrap-" + alId);
+  if (!wrap || soLeitura) return;
+
+  // Botão ＋ adicionar — usa onclick para evitar acúmulo de listeners
+  const addBtn = wrap.querySelector(".vp-add-btn");
+  if (addBtn) {
+    addBtn.onclick = async () => {
+      if (!respostasSetor[alId]) respostasSetor[alId] = { continuidade:null, adequacao:null, obs:"", anexos:[], ts: new Date().toISOString() };
+      if (!Array.isArray(respostasSetor[alId].vpEntradas)) respostasSetor[alId].vpEntradas = [{ desc:"", tipo:"", ano:"", meta:"", result:"" }];
+      respostasSetor[alId].vpEntradas.push({ desc:"", tipo:"", ano:"", meta:"", result:"" });
+      refreshVpLista(alId, soLeitura);
+      await saveVpEntradas(alId);
+    };
+  }
+
+  const lista = document.getElementById("vpLista-" + alId);
+  if (!lista) return;
+
+  // Botões × remover
+  lista.querySelectorAll(".vp-rm-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const idx = +btn.dataset.idx;
+      const entradas = respostasSetor[alId]?.vpEntradas || [];
+      if (entradas.length <= 1) { toast("É necessário manter ao menos um indicador.", "warn"); return; }
+      entradas.splice(idx, 1);
+      respostasSetor[alId].vpEntradas = entradas;
+      refreshVpLista(alId, soLeitura);
+      await saveVpEntradas(alId);
+    });
+  });
+
+  // Botões de tipo (Eficiência / Eficácia)
+  lista.querySelectorAll(".vp-tipo-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const idx   = +btn.dataset.idx;
+      const valor = btn.dataset.valor;
+      if (!Array.isArray(respostasSetor[alId]?.vpEntradas)) return;
+      respostasSetor[alId].vpEntradas[idx].tipo = valor;
+      btn.closest(".vp-tipo-group")?.querySelectorAll(".vp-tipo-btn").forEach(b =>
+        b.classList.toggle("vp-tipo-ativo", b.dataset.valor === valor));
+      await saveVpEntradas(alId);
+    });
+  });
+
+  // Select de ano
+  lista.querySelectorAll(".vp-select").forEach(sel => {
+    sel.addEventListener("change", async () => {
+      const idx = +sel.dataset.idx;
+      if (!Array.isArray(respostasSetor[alId]?.vpEntradas)) return;
+      respostasSetor[alId].vpEntradas[idx].ano = sel.value;
+      await saveVpEntradas(alId);
+    });
+  });
+
+  // Input de descrição
+  lista.querySelectorAll(".vp-desc-inp").forEach(inp => {
+    inp.addEventListener("blur", async () => {
+      const idx = +inp.dataset.idx;
+      if (!Array.isArray(respostasSetor[alId]?.vpEntradas)) return;
+      respostasSetor[alId].vpEntradas[idx].desc = inp.value;
+      await saveVpEntradas(alId);
+    });
+  });
+
+  // Inputs de % (meta / result)
+  lista.querySelectorAll(".vp-pct-inp").forEach(inp => {
+    inp.addEventListener("blur", async () => {
+      const idx      = +inp.dataset.idx;
+      const subcampo = inp.dataset.subcampo;
+      if (!Array.isArray(respostasSetor[alId]?.vpEntradas)) return;
+      respostasSetor[alId].vpEntradas[idx][subcampo] = inp.value;
+
+      // Atualiza badge de atingimento sem re-render
+      const entrada = respostasSetor[alId].vpEntradas[idx];
+      const wrap2   = inp.closest(".vp-pct-wrap");
+      const badge   = wrap2?.querySelector(".vp-ating");
+      if (entrada.meta && entrada.result) {
+        const pct = +entrada.meta > 0 ? Math.round((+entrada.result / +entrada.meta) * 100) : 0;
+        const ok  = +entrada.result >= +entrada.meta;
+        const cls = `vp-ating ${ok ? "vp-ok" : "vp-nd"}`;
+        const txt = `${pct}% da meta`;
+        if (badge) { badge.textContent = txt; badge.className = cls; }
+        else if (wrap2) { const s = document.createElement("span"); s.className = cls; s.textContent = txt; wrap2.appendChild(s); }
+      } else if (badge) { badge.remove(); }
+
+      await saveVpEntradas(alId);
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  SETOR — FORMULÁRIO
 // ═══════════════════════════════════════════════════════════════
 function renderForm() {
@@ -719,10 +887,10 @@ function renderForm() {
           const anexos   = rs.anexos       || [];
           const subResp  = isRespondida(rs);
           const isVP     = dim.id === "D7";
-          const vpTipo   = rs.vpTipo   ?? "";
-          const vpAno    = rs.vpAno    ?? "";
-          const vpMeta   = rs.vpMeta   ?? "";
-          const vpResult = rs.vpResult ?? "";
+          // vpEntradas: array de {desc, tipo, ano, meta, result}
+          const vpEntradas = (isVP && Array.isArray(rs.vpEntradas) && rs.vpEntradas.length)
+            ? rs.vpEntradas
+            : isVP ? [{ desc:"", tipo:"", ano:"", meta:"", result:"" }] : [];
 
           html += `
           <div class="al-subitem${subResp ? " al-ok" : ""}" id="al-${sub.id}">
@@ -747,44 +915,13 @@ function renderForm() {
               </div>
 
               ${isVP ? `
-              <div class="vp-extra-wrap">
-                <div class="vp-extra-title">⭐ Dados de Valor Público</div>
-                <div class="vp-extra-row">
-                  <div class="vp-field">
-                    <label class="vp-label">Tipo do Indicador</label>
-                    <div class="vp-tipo-group">
-                      <button class="vp-tipo-btn${vpTipo==="eficiencia"?" vp-tipo-ativo":""}" ${dis}
-                        data-alinea="${sub.id}" data-campo="vpTipo" data-valor="eficiencia">⚡ Eficiência</button>
-                      <button class="vp-tipo-btn${vpTipo==="eficacia"?" vp-tipo-ativo":""}" ${dis}
-                        data-alinea="${sub.id}" data-campo="vpTipo" data-valor="eficacia">🎯 Eficácia</button>
-                    </div>
-                  </div>
-                  <div class="vp-field">
-                    <label class="vp-label" for="vpAno-${sub.id}">Ano de Referência</label>
-                    <select class="vp-select" id="vpAno-${sub.id}" data-alinea="${sub.id}" data-campo="vpAno" ${soLeitura?"disabled":""}>
-                      <option value="">— Selecione —</option>
-                      ${Array.from({length:11},(_,i)=>2020+i).map(y=>`<option value="${y}"${vpAno==y?" selected":""}>${y}</option>`).join("")}
-                    </select>
-                  </div>
-                  <div class="vp-field">
-                    <label class="vp-label" for="vpMeta-${sub.id}">Meta (%)</label>
-                    <div class="vp-pct-wrap">
-                      <input class="vp-pct-inp" type="number" id="vpMeta-${sub.id}" min="0" max="100"
-                        data-alinea="${sub.id}" data-campo="vpMeta"
-                        value="${vpMeta}" placeholder="0" ${soLeitura?"readonly":""}/>
-                      <span class="vp-pct-sym">%</span>
-                    </div>
-                  </div>
-                  <div class="vp-field">
-                    <label class="vp-label" for="vpResult-${sub.id}">Resultado (%)</label>
-                    <div class="vp-pct-wrap">
-                      <input class="vp-pct-inp" type="number" id="vpResult-${sub.id}" min="0" max="999"
-                        data-alinea="${sub.id}" data-campo="vpResult"
-                        value="${vpResult}" placeholder="0" ${soLeitura?"readonly":""}/>
-                      <span class="vp-pct-sym">%</span>
-                      ${vpMeta && vpResult ? `<span class="vp-ating ${+vpResult>= +vpMeta?"vp-ok":"vp-nd"}">${+vpMeta>0?Math.round((+vpResult/+vpMeta)*100):0}% da meta</span>` : ""}
-                    </div>
-                  </div>
+              <div class="vp-extra-wrap" id="vpWrap-${sub.id}">
+                <div class="vp-header-row">
+                  <span class="vp-extra-title">Indicadores Cadastrados</span>
+                  ${!soLeitura ? `<button class="vp-add-btn" data-alinea="${sub.id}" type="button" title="Adicionar indicador">＋ Adicionar indicador</button>` : ""}
+                </div>
+                <div class="vp-entradas-lista" id="vpLista-${sub.id}">
+                  ${vpEntradas.map((e, ei) => renderVpEntradaHtml(sub.id, ei, e, soLeitura)).join("")}
                 </div>
               </div>` : ""}
 
@@ -952,54 +1089,21 @@ function renderForm() {
   });
 
   // ── Botões de tipo VP (Eficiência / Eficácia) ──────────────────
-  document.querySelectorAll(".vp-tipo-btn").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const alId  = btn.dataset.alinea;
-      const campo = btn.dataset.campo;
-      const valor = btn.dataset.valor;
-      if (!respostasSetor[alId]) respostasSetor[alId] = { continuidade:null, adequacao:null, obs:"", anexos:[], ts: new Date().toISOString() };
-      respostasSetor[alId][campo] = valor;
-      await saveResposta(currentSetorId, alId, campo, valor);
-      // Atualiza visual sem re-renderizar o form inteiro
-      const grupo = btn.closest(".vp-tipo-group");
-      grupo?.querySelectorAll(".vp-tipo-btn").forEach(b => b.classList.toggle("vp-tipo-ativo", b.dataset.valor === valor));
-    });
-  });
-
   // ── Select de ano VP ───────────────────────────────────────────
-  document.querySelectorAll(".vp-select").forEach(sel => {
-    sel.addEventListener("change", async () => {
-      const alId = sel.dataset.alinea;
-      const campo = sel.dataset.campo;
-      if (!respostasSetor[alId]) respostasSetor[alId] = { continuidade:null, adequacao:null, obs:"", anexos:[], ts: new Date().toISOString() };
-      respostasSetor[alId][campo] = sel.value;
-      await saveResposta(currentSetorId, alId, campo, sel.value);
-    });
-  });
-
   // ── Inputs de % VP (meta / resultado) ─────────────────────────
-  document.querySelectorAll(".vp-pct-inp").forEach(inp => {
-    inp.addEventListener("blur", async () => {
-      const alId = inp.dataset.alinea;
-      const campo = inp.dataset.campo;
-      const val = inp.value;
-      if (!respostasSetor[alId]) respostasSetor[alId] = { continuidade:null, adequacao:null, obs:"", anexos:[], ts: new Date().toISOString() };
-      respostasSetor[alId][campo] = val;
-      await saveResposta(currentSetorId, alId, campo, val);
-      // Atualiza indicador "X% da meta" sem re-render completo
-      const vpMeta   = respostasSetor[alId].vpMeta   || "";
-      const vpResult = respostasSetor[alId].vpResult  || "";
-      const atingEl  = inp.closest(".vp-pct-wrap")?.querySelector(".vp-ating");
-      if (vpMeta && vpResult) {
-        const pct = +vpMeta > 0 ? Math.round((+vpResult / +vpMeta) * 100) : 0;
-        const ok  = +vpResult >= +vpMeta;
-        if (atingEl) { atingEl.textContent = `${pct}% da meta`; atingEl.className = `vp-ating ${ok?"vp-ok":"vp-nd"}`; }
-        else {
-          const span = document.createElement("span");
-          span.className = `vp-ating ${ok?"vp-ok":"vp-nd"}`;
-          span.textContent = `${pct}% da meta`;
-          inp.closest(".vp-pct-wrap")?.appendChild(span);
-        }
+  // → Todos gerenciados pelo bindVpEntrada por alínea
+  dimsSetor.forEach(dim => {
+    if (dim.id !== "D7") return;
+    dim.alineas.forEach(al => {
+      if (temSubitens(al)) {
+        al.subitens.forEach(sub => {
+          // Garante que vpEntradas existe no estado local
+          if (!respostasSetor[sub.id]) respostasSetor[sub.id] = { continuidade:null, adequacao:null, obs:"", anexos:[], vpEntradas:[{ desc:"", tipo:"", ano:"", meta:"", result:"" }], ts: new Date().toISOString() };
+          if (!Array.isArray(respostasSetor[sub.id].vpEntradas) || respostasSetor[sub.id].vpEntradas.length === 0) {
+            respostasSetor[sub.id].vpEntradas = [{ desc:"", tipo:"", ano:"", meta:"", result:"" }];
+          }
+          bindVpEntrada(sub.id, soLeitura);
+        });
       }
     });
   });
